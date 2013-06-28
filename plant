@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if [ -z "$PLANT_HOME" ]; then
+    PLANT_HOME=${HOME}/.plant
+fi
+
+if [ -z "$PLANT_LISP" ]; then
+    if [ -f `which ccl64` ]; then
+        PLANT_LISP=ccl64
+    else
+        if [ -f `which ccl` ]; then
+            PLANT_LISP=ccl
+        fi
+    fi
+fi
+
+${PLANT_LISP} -n -l ${PLANT_HOME}/plant.lisp -- $@
