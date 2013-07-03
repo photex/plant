@@ -1,22 +1,24 @@
 #!/bin/zsh
 
-if [ -d ".plant" ]; then
+if [[ -d ".plant" ]]
+then
     PROJECT=`basename $PWD`
     COMMAND=$1
-    OPTIONS=$@[2,${#}]
+    OPTIONS=($@[2,${#}])
 else
     COMMAND=$1
     PROJECT=$2
-    if [ -d $PROJECT ]; then
+    if [[ -d $PROJECT ]]
+    then
         cd $PROJECT
     fi
-    OPTIONS=$@[3,${#}]
+    OPTIONS=($@[3,${#}])
 fi
 
-if [ -f ".plant/plantrc" && -z "$PLANT_LISP" ]; then
+if [[ -f ".plant/plantrc" && -z "$PLANT_LISP" ]]; then
     source .plant/plantrc
 else
-    if [ -z "$PLANT_LISP" ]; then
+    if [[ -z "$PLANT_LISP" ]]; then
         PLANT_LISP=sbcl
     fi
 
@@ -41,7 +43,7 @@ else
 fi
 
 mkPlantRC() {
-    if [ -f .plant/plantrc ]; then
+    if [[ -f .plant/plantrc ]]; then
         rm .plant/plantrc
     fi
 
@@ -50,7 +52,7 @@ mkPlantRC() {
     echo NOUSERINIT=$NOUSERINIT >> .plant/plantrc
     echo LOAD=$LOAD >> .plant/plantrc
     echo EVAL=$EVAL >> .plant/plantrc
-    echo SLAD=$SLAD >> .plant/plantrc
+    echo SLAD="'"$SLAD"'" >> .plant/plantrc
 }
 
 runLisp() {
@@ -66,12 +68,12 @@ buildLisp() {
 }
 
 new() {
-    if [ -d .plant ]; then
+    if [[ -d .plant ]]; then
         echo "ERROR: Creating a project under another project is not supported."
         exit 1
     fi
     
-    if [ -e $PROJECT ]; then
+    if [[ -e $PROJECT ]]; then
         echo "ERROR: $PROJECT already exists."
         exit 1
     fi
@@ -100,8 +102,8 @@ rebuild() {
 }
 
 quickloads() {
-    if [ -f .plant/$PLANT_LISP-$PROJECT ]; then
-        if [ -e ".quicklisp" ]; then
+    if [[ -f .plant/$PLANT_LISP-$PROJECT ]]; then
+        if [[ -e ".quicklisp" ]]; then
             buildLisp $OPTIONS
         else
             echo "ERROR: $PROJECT does not appear to be a valid project."
@@ -121,12 +123,35 @@ swank() {
     runLisp $OPTIONS $EVAL "(swank:create-server :dont-close t)"
 }
 
+includeLocalProject() {
+    TYPE=$OPTIONS[1]
+    URL=$OPTIONS[2]
+
+    echo $TYPE, $URL
+    
+    cd .quicklisp/local-projects
+
+    case $TYPE in
+        git|hg)
+            $TYPE clone $URL
+            ;;
+        wget)
+            $TYPE $URL
+            ;;
+        *)
+            echo "ERROR: This method of local project retrieval is currently unsupported."
+            exit 1
+            ;;
+    esac
+}
+
 help() {
     echo "plant new <project name>"
     echo 'plant quickloads :system :system :system ...'
     echo 'plant swank [params]'
     echo 'plant run [params]'
     echo 'plant rebuild'
+    echo 'plant include [git|hg|wget] <url>'
 }
 
 # "main"
@@ -148,6 +173,9 @@ case $COMMAND in
         ;;
     rebuild)
         rebuild
+        ;;
+    include)
+        includeLocalProject
         ;;
     *)
         help
