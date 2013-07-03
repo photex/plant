@@ -59,6 +59,7 @@ runLisp() {
 
 buildLisp() {
     $PLANT_LISP $NOUSERINIT $LOAD .quicklisp/setup.lisp \
+        $LOAD ~/.plant/setup.lisp \
         $EVAL '(ql:quickload '"'"'(:swank '$1'))' \
         $EVAL $SLAD
     mkPlantRC
