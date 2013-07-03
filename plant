@@ -104,7 +104,7 @@ rebuild() {
 quickloads() {
     if [[ -f .plant/$PLANT_LISP-$PROJECT ]]; then
         if [[ -e ".quicklisp" ]]; then
-            buildLisp $OPTIONS
+            buildLisp "$OPTIONS"
         else
             echo "ERROR: $PROJECT does not appear to be a valid project."
             exit 1
