@@ -62,7 +62,8 @@ runLisp() {
 buildLisp() {
     $PLANT_LISP $NOUSERINIT $LOAD .quicklisp/setup.lisp \
         $LOAD ~/.plant/setup.lisp \
-        $EVAL '(ql:quickload '"'"'(:swank '$1'))' \
+        $EVAL '(pushnew #P"'$PWD/src/'" asdf:*central-registry*)' \
+        $EVAL '(ql:quickload '"'"'(:swank :alexandria '$1'))' \
         $EVAL $SLAD
     mkPlantRC
 }
@@ -85,6 +86,8 @@ new() {
 
     $PLANT_LISP $NOUSERINIT $LOAD quicklisp.lisp \
         $EVAL '(quicklisp-quickstart:install :path #P".quicklisp/")' \
+        $EVAL '(ql:quickload :quickproject)' \
+        $EVAL '(quickproject:make-project #P"'$PWD/src/'" :name "'$PROJECT'")' \
         $EVAL '(quit)'
 
     rm quicklisp.lisp
