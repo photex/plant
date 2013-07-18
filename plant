@@ -11,6 +11,10 @@ else
     if [[ -d $PROJECT ]]
     then
         cd $PROJECT
+    else
+        if [[ -z "$PROJECT" ]]; then
+            PROJECT=`basename $PWD`
+        fi
     fi
     OPTIONS=($@[3,${#}])
 fi
@@ -59,13 +63,47 @@ runLisp() {
     .plant/$PLANT_LISP-$PROJECT $NOUSERINIT $@
 }
 
+mkLocalSymlink() {
+    TARGET=../../${1%%.git}
+    pushd .quicklisp/local-projects
+    ln -s $TARGET
+    popd
+}
+
 buildLisp() {
+    if [[ ! -d .plant ]]; then
+        mkdir .plant
+    fi 
+    
     $PLANT_LISP $NOUSERINIT $LOAD .quicklisp/setup.lisp \
         $LOAD ~/.plant/setup.lisp \
-        $EVAL '(pushnew #P"'$PWD/src/'" asdf:*central-registry*)' \
         $EVAL '(ql:quickload '"'"'(:swank :alexandria '$1'))' \
         $EVAL $SLAD
     mkPlantRC
+}
+
+installQuicklisp() {
+    if [[ -f .quicklisp/setup.lisp ]]; then
+        return 0
+    fi
+    
+    wget http://beta.quicklisp.org/quicklisp.lisp
+
+    $PLANT_LISP $NOUSERINIT $LOAD quicklisp.lisp \
+        $EVAL '(quicklisp-quickstart:install :path #P".quicklisp/")' \
+        $EVAL '(quit)'
+
+    rm quicklisp.lisp
+}
+
+newProject() {
+    $PLANT_LISP $NOUSERINIT $LOAD .quicklisp/setup.lisp \
+        $LOAD ~/.plant/setup.lisp \
+        $EVAL '(ql:quickload :quickproject)' \
+        $EVAL '(quickproject:make-project #P"'$PWD/$PROJECT/src/'" :name "'$PROJECT'")' \
+        $EVAL '(quit)'
+
+    mkLocalSymlink $PROJECT
 }
 
 new() {
@@ -82,18 +120,20 @@ new() {
     mkdir $PROJECT
     cd $PROJECT
 
-    wget http://beta.quicklisp.org/quicklisp.lisp
-
-    $PLANT_LISP $NOUSERINIT $LOAD quicklisp.lisp \
-        $EVAL '(quicklisp-quickstart:install :path #P".quicklisp/")' \
-        $EVAL '(ql:quickload :quickproject)' \
-        $EVAL '(quickproject:make-project #P"'$PWD/src/'" :name "'$PROJECT'")' \
-        $EVAL '(quit)'
-
-    rm quicklisp.lisp
-
-    mkdir .plant
+    installQuicklisp
     
+    buildLisp
+
+    newProject
+}
+
+init() {
+    if [[ -d .plant ]]; then
+        echo "This is already a working plant project!"
+        return 0
+    fi
+
+    installQuicklisp
     buildLisp
 }
 
@@ -131,8 +171,6 @@ includeLocalProject() {
     URL=$OPTIONS[2]
 
     echo $TYPE, $URL
-    
-    cd .quicklisp/local-projects
 
     case $TYPE in
         git|hg)
@@ -146,6 +184,8 @@ includeLocalProject() {
             exit 1
             ;;
     esac
+
+    mkLocalSymlink `basename $URL`
 }
 
 help() {
@@ -164,6 +204,9 @@ case $COMMAND in
         ;;
     new)
         new
+        ;;
+    init)
+        init
         ;;
     quickloads)
         quickloads
