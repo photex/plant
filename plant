@@ -23,10 +23,7 @@
 
 ;;
 
-(define PROJECT
-  (if (dir? ".plant")
-      (system "basename $PWD")
-      #f))
+(define PROJECT (basename (getenv "PWD")))
 
 (define PLANT_LISP
   (let ((env-val (getenv "PLANT_LISP")))
@@ -57,17 +54,15 @@
          (set! SAVE
                (format
                 #f
-                "(save-lisp-and-die #P\".plant/~a-~a\" :prepend-kernel t :purify t)"
+                "(save-application #P\".plant/~a-~a\" :prepend-kernel t :purify t)"
                 PLANT_LISP PROJECT))))
       
       (#t
        (begin
-         (write (format #f "~s is not currently supported.~%" PLANT_LISP))
-         (exit 1))))
+         (format #t "~a is not currently supported.~%" PLANT_LISP)
+         (exit 255))))
 
 ;; commands
-
-(define (new options) #f)
 
 (define (init options) #f)
 
@@ -80,18 +75,11 @@
 (define (include options) #f)
 
 (define (help options)
-  (write "plant new <project name>")
-  (newline)
-  (write "plant quickloads <system, system, system, ...>")
-  (newline)
-  (write "plant run [-swank] [params]")
-  (newline)
-  (write "plant rebuild")
-  (newline)
-  (write "plant include <git|hg|wget> <url>")
-  (newline)
-  (write "plant init")
-  (newline))
+  (format #t "plant init~%")
+  (format #t "plant include <git|hg|wget> <url>~%")
+  (format #t "plant quickloads <system, system, system, ...>~%")
+  (format #t "plant run [-swank] [params]~%")
+  (format #t "plant rebuild~%"))
 
 ;; entry point
 
@@ -101,12 +89,7 @@
   ;; we need at least a command
   (when (< (length args) 2)
     (help '())
-    (exit 255))
-
-  (format #t "Project: ~a~%LISP: ~a~%Load: ~a~%Eval: ~a~%Save: ~a~%"
-          PROJECT PLANT_LISP
-          LOAD EVAL SAVE)
-  
+    (exit 255))  
   
   (let* ((command (cadr args))
          (options (cddr args)))
@@ -116,6 +99,5 @@
           ((equal? command "rebuild") (rebuild options))
           ((equal? command "include") (include options))
           ((equal? command "init") (init options))
-          ((equal? command "new") (new options))
           ((equal? command "help") (help options))
           (#t (help options)))))
