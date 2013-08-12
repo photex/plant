@@ -31,18 +31,22 @@
 
 (define NOUSERINIT #f)
 (define LOAD #f)
-(define EVAL #f)
+(define EVALSTR #f)
 (define SAVE #f)
 
 (cond ((equal? PLANT_LISP "sbcl")
        (begin
          (set! NOUSERINIT "--no-userinit")
          (set! LOAD "--load")
-         (set! EVAL "--eval")
+         (set! EVALSTR "--eval")
          (set! SAVE
                (format
                 #f
-                "(save-lisp-and-die #P\".plant/~a-~a\" :executable t :purify t)"
+                "'(save-lisp-and-die #P\".plant/~a-~a\" :executable t :purify t)'"
+                ;; (string-join (list "'(save-lisp-and-die"
+                ;;                    "#P\".plant/~a-~a\""
+                ;;                    ":executable t"
+                ;;                    ":purify t)'"))
                 PLANT_LISP PROJECT))))
       
       ((or (equal? PLANT_LISP "ccl")
@@ -50,11 +54,11 @@
        (begin
          (set! NOUSERINIT "-n")
          (set! LOAD "-l")
-         (set! EVAL "-e")
+         (set! EVALSTR "-e")
          (set! SAVE
                (format
                 #f
-                "(save-application #P\".plant/~a-~a\" :prepend-kernel t :purify t)"
+                "'(save-application #P\".plant/~a-~a\" :prepend-kernel t :purify t)'"
                 PLANT_LISP PROJECT))))
       
       (#t
@@ -62,13 +66,35 @@
          (format #t "~a is not currently supported.~%" PLANT_LISP)
          (exit 255))))
 
+;; functions
+
+(define (install-quicklisp options)
+  (system "wget http://beta.quicklisp.org/quicklisp.lisp")
+  (system (string-join (list PLANT_LISP NOUSERINIT LOAD "quicklisp.lisp"
+                             EVALSTR "'(quicklisp-quickstart:install :path #P\".quicklisp/\")'"
+                             EVALSTR "'(quit)'")))
+  (delete-file "quicklisp.lisp"))
+
+(define (build-lisp options)
+  (mkdir ".plant")
+  (system (string-join (list PLANT_LISP NOUSERINIT LOAD ".quicklisp/setup.lisp"
+                             LOAD "~/.plant/setup.lisp"
+                             EVALSTR "'(ql:quickload '\"'\"'(:swank :alexandria))'"
+                             EVALSTR SAVE))))
+
 ;; commands
 
-(define (init options) #f)
+(define (init options)
+  (install-quicklisp options)
+  (build-lisp options))
 
 (define (quickloads options) #f)
 
-(define (run options) #f)
+(define (run options)
+  (system
+   (string-join (list
+                 (format #f ".plant/~a-~a" PLANT_LISP PROJECT)
+                 NOUSERINIT))))
 
 (define (rebuild options) #f)
 

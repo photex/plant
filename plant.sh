@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+#http://downloads.sourceforge.net/project/ecls/ecls/13.5/ecl-13.5.1.tgz
+
 if [[ -d ".plant" ]]
 then
     PROJECT=`basename $PWD`
