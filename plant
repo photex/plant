@@ -43,10 +43,6 @@
                (format
                 #f
                 "'(save-lisp-and-die #P\".plant/~a-~a\" :executable t :purify t)'"
-                ;; (string-join (list "'(save-lisp-and-die"
-                ;;                    "#P\".plant/~a-~a\""
-                ;;                    ":executable t"
-                ;;                    ":purify t)'"))
                 PLANT_LISP PROJECT))))
       
       ((or (equal? PLANT_LISP "ccl")
@@ -76,11 +72,20 @@
   (delete-file "quicklisp.lisp"))
 
 (define (build-lisp options)
-  (mkdir ".plant")
-  (system (string-join (list PLANT_LISP NOUSERINIT LOAD ".quicklisp/setup.lisp"
-                             LOAD "~/.plant/setup.lisp"
-                             EVALSTR "'(ql:quickload '\"'\"'(:swank :alexandria))'"
-                             EVALSTR SAVE))))
+  (let ((quickloads (string-join
+                     (map (lambda (x)
+                            (format #f ":~a" x))
+                          options))))
+    (when (not (dir? ".plant"))
+      (mkdir ".plant"))
+    (system (string-join
+             (list PLANT_LISP NOUSERINIT LOAD ".quicklisp/setup.lisp"
+                   LOAD "~/.plant/setup.lisp"
+                   EVALSTR (string-join
+                            (list "'(ql:quickload '\"'\"'(:swank :alexandria "
+                                  quickloads
+                                  "))'"))
+                   EVALSTR SAVE)))))
 
 ;; commands
 
@@ -88,13 +93,19 @@
   (install-quicklisp options)
   (build-lisp options))
 
-(define (quickloads options) #f)
+(define (quickloads options)
+  (build-lisp options))
 
 (define (run options)
-  (system
-   (string-join (list
-                 (format #f ".plant/~a-~a" PLANT_LISP PROJECT)
-                 NOUSERINIT))))
+  (let ((swank-arg (if (equal? "--swank" (car options))
+                       (string-join
+                        (list EVALSTR
+                              "'(swank:create-server :dont-close t)'"))
+                       "")))
+    (system (string-join
+             (list (format #f ".plant/~a-~a" PLANT_LISP PROJECT)
+                   swank-arg
+                   NOUSERINIT)))))
 
 (define (rebuild options) #f)
 
