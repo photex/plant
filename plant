@@ -23,7 +23,7 @@
 
 ;;
 
-(define PROJECT (basename (getenv "PWD")))
+(define PROJECT (basename (getcwd)))
 
 (define PLANT_LISP
   (let ((env-val (getenv "PLANT_LISP")))
@@ -67,19 +67,17 @@
 (define (install-quicklisp options)
   (system "wget http://beta.quicklisp.org/quicklisp.lisp")
   (system (string-join (list PLANT_LISP NOUSERINIT LOAD "quicklisp.lisp"
-                             EVALSTR "'(quicklisp-quickstart:install :path #P\".quicklisp/\")'"
+                             EVALSTR "'(quicklisp-quickstart:install :path #P\".plant/quicklisp/\")'"
                              EVALSTR "'(quit)'")))
   (delete-file "quicklisp.lisp"))
 
 (define (build-lisp options)
-  (let ((quickloads (string-join
-                     (map (lambda (x)
-                            (format #f ":~a" x))
-                          options))))
+  (let ((quickloads (string-join (map (lambda (x)
+                                        (format #f ":~a" x)) options))))
     (when (not (dir? ".plant"))
       (mkdir ".plant"))
     (system (string-join
-             (list PLANT_LISP NOUSERINIT LOAD ".quicklisp/setup.lisp"
+             (list PLANT_LISP NOUSERINIT LOAD ".plant/quicklisp/setup.lisp"
                    LOAD "~/.plant/setup.lisp"
                    EVALSTR (string-join
                             (list "'(ql:quickload '\"'\"'(:swank :alexandria "
@@ -89,34 +87,47 @@
 
 ;; commands
 
+(define (help options)
+  (format #t "plant init~%")
+  (format #t "plant include <git|hg|wget> <url>~%")
+  (format #t "plant quickloads <system> [<system> <system> ...]~%")
+  (format #t "plant run [--swank [port]]~%")
+  (format #t "plant rebuild~%"))
+
 (define (init options)
   (install-quicklisp options)
   (build-lisp options))
 
 (define (quickloads options)
-  (build-lisp options))
+  (if (>= (length options) 1)
+      (build-lisp options)
+      (help options)))
 
 (define (run options)
-  (let ((swank-arg (if (equal? "--swank" (car options))
-                       (string-join
-                        (list EVALSTR
-                              "'(swank:create-server :dont-close t)'"))
-                       "")))
-    (system (string-join
-             (list (format #f ".plant/~a-~a" PLANT_LISP PROJECT)
-                   swank-arg
-                   NOUSERINIT)))))
+  (let* ((option-count (length options))
+         (plant (format #f ".plant/~a-~a" PLANT_LISP PROJECT))
+         (swank? (equal? "--swank" (when (>= option-count 1)
+                                       (car options))))
+         (default-port "4005")
+         (port (if (>= option-count 2)
+                   (cadr options)
+                   default-port))
+         (swank-arg-template "'(swank:create-server :dont-close t :port ~a)'")
+         (swank-args (string-join
+                      (list EVALSTR (format #f swank-arg-template port))))
+         (cmd-line (string-join (list plant NOUSERINIT
+                                      (if swank?
+                                          swank-args
+                                          "")))))
+    (if (file? plant)
+        (system cmd-line)
+        (begin
+          (format #t "ERROR: The current directory does not appear to be a plant project.")
+          (exit 2)))))
 
 (define (rebuild options) #f)
 
 (define (include options) #f)
-
-(define (help options)
-  (format #t "plant init~%")
-  (format #t "plant include <git|hg|wget> <url>~%")
-  (format #t "plant quickloads <system, system, system, ...>~%")
-  (format #t "plant run [-swank] [params]~%")
-  (format #t "plant rebuild~%"))
 
 ;; entry point
 
@@ -126,7 +137,7 @@
   ;; we need at least a command
   (when (< (length args) 2)
     (help '())
-    (exit 255))  
+    (exit 255))
   
   (let* ((command (cadr args))
          (options (cddr args)))
