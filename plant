@@ -1,6 +1,9 @@
 #!/usr/bin/guile \
---no-auto-compile -e main -s 
+--no-auto-compile -e main -s
 !#
+
+;; holds the default configurations for supported lisps
+(primitive-load "~/.plant/defaults.scm")
 
 ;; utilities
 
