@@ -2,16 +2,25 @@
 --no-auto-compile -e main -s
 !#
 
-;; utilities
-
 (define (curpath p)
   "simply join the path fragment with the current working directory"
   (string-join (list (getcwd) p) "/"))
 
+;; globals
+
+(define *default-quickloads* '("swank" "alexandria"))
+(define *plant-project* (curpath "plant-project.scm"))
+(define *plant-dir* (curpath ".plant.d"))
+(define *project-data* '())
+
+(define *quicklisp-url* "http://beta.quicklisp.org/quicklisp.lisp")
+
+;; utilities
+
 (define (path-test op p)
   "wraps the test command."
   (equal? 0 (system (string-join
-                     (list "test" op (curpath p))))))
+                     (list "test" op p)))))
 
 (define (file? f)
   "Returns true if 'f' is a valid path to a file."
@@ -21,42 +30,69 @@
   "Returns true if 'd' is a valid path to a directory."
   (path-test "-d" d))
 
-;; globals
+(define (project-item item-key)
+  (assoc-ref *project-data* item-key))
 
-(define *default-quickloads* '("swank" "alexandria"))
-(define *plant-project* (curpath "plant.scm"))
-(define *plant-dir* (curpath ".plant.d"))
-(define *project-data*)
+(define (plant-lisp)
+  (project-item #:plant-lisp))
 
-(define *quicklisp-url* "http://beta.quicklisp.org/quicklisp.lisp")
+(define (project-name)
+  (project-item #:project-name))
+
+(define (project-lisp)
+  (format #f ".plant/~a-~a" (plant-lisp) (project-name)))
+
+(define (no-user-init)
+  (project-item #:no-user-init))
+
+(define (load-arg arg)
+  (string-join (list (project-item #:load) arg)))
+
+(define (eval-arg arg)
+  (string-join (list (project-item #:eval) arg)))
+
+(define (save)
+  (eval-arg (project-item #:save)))
 
 ;; functions
 
+(define (save-project-settings)
+  (with-output-to-file *plant-project*
+    (lambda ()
+      (write *project-data* (current-output-port)))))
+
+(define (load-project-settings)
+  (with-input-from-file *plant-project*
+    (lambda ()
+      (set! *project-data* (read (current-input-port))))))
+
 (define (install-quicklisp options)
-  (system (string-join (list "wget" *quicklisp-url*)))
-  (let ((plant-lisp (assoc-ref *project-data* #:plant-lisp))
-        (no-user-init (assoc-ref *project-data* #:no-user-init))
-        (load (assoc-ref *project-data* #:load))
-        ()))
-  (system (string-join (list (assoc-ref *project-data* #:plant-lisp)
-                             (assoc-ref *project-data*) LOAD "quicklisp.lisp"
-                             EVALSTR "'(quicklisp-quickstart:install :path #P\".plant/quicklisp/\")'"
-                             EVALSTR "'(quit)'")))
-  (delete-file "quicklisp.lisp"))
+  (let ((wget-cmd (string-join (list "wget" *quicklisp-url*)))
+        (quicklisp-install-cmd (string-join
+                                (list (plant-lisp)
+                                      (load-arg "quicklisp.lisp")
+                                      (eval-arg "'(quicklisp-quickstart:install :path #P\".plant/quicklisp/\")'")
+                                      (eval-arg "'(quit)'")))))
+    (format #t wget-cmd)
+    (system wget-cmd)
+    (format #t quicklisp-install-cmd)
+    (system quicklisp-install-cmd)
+    (delete-file "quicklisp.lisp")))
 
 (define (build-lisp options)
-  (let ((quickloads (string-join (map (lambda (x)
-                                        (format #f ":~a" x)) options))))
-    (when (not (dir? ".plant"))
+  (let* ((quickloads (string-join (map (lambda (x) (format #f ":~a" x)) options)))
+         (quickloads-arg (string-join
+                          (list "'(ql:quickload '\"'\"'(:swank :alexandria "
+                                quickloads
+                                "))'"))))
+    (unless (dir? ".plant")
       (mkdir ".plant"))
     (system (string-join
-             (list PLANT_LISP NOUSERINIT LOAD ".plant/quicklisp/setup.lisp"
-                   LOAD "~/.plant/setup.lisp"
-                   EVALSTR (string-join
-                            (list "'(ql:quickload '\"'\"'(:swank :alexandria "
-                                  quickloads
-                                  "))'"))
-                   EVALSTR SAVE)))))
+             (list (plant-lisp) (no-user-init)
+                   (load-arg ".plant/quicklisp/setup.lisp")
+                   (load-arg "~/.plant/setup.lisp")
+                   (eval-arg quickloads-arg)
+                   (save))))))
 
 ;; commands
 
@@ -78,7 +114,6 @@
 
 (define (run options)
   (let* ((option-count (length options))
-         (plant (format #f ".plant/~a-~a" PLANT_LISP *project-name*))
          (swank? (equal? "--swank" (when (>= option-count 1)
                                        (car options))))
          (default-port "4005")
@@ -86,16 +121,17 @@
                    (cadr options)
                    default-port))
          (swank-arg-template "'(swank:create-server :dont-close t :port ~a)'")
-         (swank-args (string-join
-                      (list EVALSTR (format #f swank-arg-template port))))
-         (cmd-line (string-join (list plant NOUSERINIT
+         (swank-args (eval-arg (format #f swank-arg-template port)))
+         (cmd-line (string-join (list (project-lisp)
+                                      (no-user-init)
                                       (if swank?
                                           swank-args
                                           "")))))
-    (if (file? plant)
+    (if (file? (curpath (project-lisp)))
         (system cmd-line)
         (begin
-          (format #t "ERROR: The current directory does not appear to be a plant project.")
+          (format #t "ERROR: The current directory does not appear to be a plant project.~%~a~%~a~%"
+                  (project-lisp) (cmd-line))
           (exit 2)))))
 
 (define (rebuild options) #f)
@@ -116,29 +152,33 @@
       ;; load the default configurations for supported lisps
       ;; and initialize the project data
       (begin
-        (let* ((plant-lisp (or (getenv "PLANT_LISP") "sbcl"))
+        (format #t "Unable to locate a project file (~a) creating a new one.~%" *plant-project*)
+        (let* ((plant-lisp-bin (or (getenv "PLANT_LISP") "sbcl"))
                (project-defaults-file (format #f "~a/.plant/~a-defaults.scm"
-                                              (getenv "HOME") plant-lisp))
+                                              (getenv "HOME") (if (or (equal? plant-lisp-bin "ccl")
+                                                                      (equal? plant-lisp-bin "ccl64"))
+                                                                  "clozure"
+                                                                  plant-lisp-bin)))
                (project-name (basename (getcwd))))
           ;; If there is no defaults file for the current lisp then we bail
           (unless (file? project-defaults-file)
             (help '())
-            (format #t "ERROR: ~a is not currently supported by plant.~%" plant-lisp)
+            (format #t "ERROR: ~a is not currently supported by plant.~%" plant-lisp-bin)
             (exit 2))
           ;; Load the defaults and add/update values for the current project
-          (primitive-load project-defaults-file)
-          (assoc-set! plant-default-config #:project-name project-name)
-          (assoc-set! plant-default-config #:plant-lisp plant-lisp)
-          (assoc-set! plant-default-config #:quickloads *default-quickloads*)
-          (assoc-set! plant-default-config
-                      #:save (format #f (assoc-ref plant-default-config #:save)
-                                     plant-lisp project-name))
-          (set! *project-data* project-data)))
+          (set! *project-data* (with-input-from-file project-defaults-file
+                                 (lambda () (read (current-input-port)))))
+          (set! *project-data* (assoc-set! *project-data* #:project-name project-name))
+          (set! *project-data* (assoc-set! *project-data* #:plant-lisp plant-lisp-bin))
+          (set! *project-data* (assoc-set! *project-data* #:quickloads *default-quickloads*))
+          (set! *project-data* (assoc-set! *project-data* #:save
+                                           (format #f (assoc-ref *project-data* #:save)
+                                                   plant-lisp-bin project-name))))
+        (save-project-settings))
       ;; else load the existing project data and bind it
-      (begin
-        (primitive-load *plant-project*)))
+      (load-project-settings))
 
-  (unless (defined? *project-data*)
+  (unless (defined? '*project-data*)
     (format #t "ERROR: Unable to load or create project data!")
     (exit 3))
   
