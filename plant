@@ -42,7 +42,7 @@
   (project-item #:project-name))
 
 (define (project-lisp)
-  (format #f "~a/~a-~a" *plant-dir* (plant-lisp) (project-name)))
+  (format #f ".plant/~a-~a" (plant-lisp) (project-name)))
 
 (define (no-user-init)
   (project-item #:no-user-init))
@@ -68,32 +68,27 @@
     (lambda ()
       (set! *project-data* (read (current-input-port))))))
 
-(define (install-quicklisp options)
+(define (install-quicklisp)
   (let ((wget-cmd (string-join (list "wget" *quicklisp-url*)))
         (quicklisp-install-cmd (string-join
                                 (list (plant-lisp) (no-user-init)
                                       (load-arg "quicklisp.lisp")
-                                      (eval-arg
-                                       (format #f "'(quicklisp-quickstart:install :path #P\"~a/quicklisp/\")'"
-                                               *plant-dir*))
+                                      (eval-arg "'(quicklisp-quickstart:install :path #P\"~/.plant/quicklisp/\")'")
                                       (eval-arg "'(quit)'")))))
-    (format #t wget-cmd)
     (system wget-cmd)
-    (format #t quicklisp-install-cmd)
     (system quicklisp-install-cmd)
     (delete-file "quicklisp.lisp")))
 
 (define (build-lisp options)
-  (let* ((quickloads (string-join (map (lambda (x) (format #f ":~a" x)) options)))
+  (let* ((quickloads (string-join (map (lambda (x) (format #f ":~a" x))
+                                       (append *default-quickloads* options))))
          (quickloads-arg (string-join
-                          (list "'(ql:quickload '\"'\"'(:swank :alexandria "
-                                quickloads
-                                "))'"))))
+                          (list "'(ql:quickload '\"'\"'(" quickloads "))'"))))
     (unless (dir? *plant-dir*)
       (mkdir *plant-dir*))
     (system (string-join
              (list (plant-lisp) (no-user-init)
-                   (load-arg ".plant/quicklisp/setup.lisp")
+                   (load-arg "~/.plant/quicklisp/setup.lisp")
                    (load-arg "~/.plant/setup.lisp")
                    (eval-arg quickloads-arg)
                    (save))))))
@@ -108,7 +103,6 @@
   (format #t "plant rebuild~%"))
 
 (define (init options)
-  (install-quicklisp options)
   (build-lisp options))
 
 (define (quickloads options)
@@ -187,6 +181,9 @@
         (save-project-settings))
       ;; else load the existing project data and bind it
       (load-project-settings))
+
+  (unless (dir? (string-join (list (getenv "HOME") ".plant" "quicklisp") "/"))
+    (install-quicklisp))
 
   (unless (defined? '*project-data*)
     (format #t "ERROR: Unable to load or create project data!")
