@@ -2,15 +2,17 @@
 --no-auto-compile -e main -s
 !#
 
+(use-modules (ice-9 pretty-print))
+
 (define (curpath p)
   "simply join the path fragment with the current working directory"
   (string-join (list (getcwd) p) "/"))
 
 ;; globals
 
-(define *default-quickloads* '("swank" "alexandria"))
+(define *default-quickloads* (list "swank" "alexandria"))
 (define *plant-project* (curpath "plant-project.scm"))
-(define *plant-dir* (curpath ".plant.d"))
+(define *plant-dir* (curpath ".plant"))
 (define *project-data* '())
 
 (define *quicklisp-url* "http://beta.quicklisp.org/quicklisp.lisp")
@@ -40,7 +42,7 @@
   (project-item #:project-name))
 
 (define (project-lisp)
-  (format #f ".plant/~a-~a" (plant-lisp) (project-name)))
+  (format #f "~a/~a-~a" *plant-dir* (plant-lisp) (project-name)))
 
 (define (no-user-init)
   (project-item #:no-user-init))
@@ -59,7 +61,7 @@
 (define (save-project-settings)
   (with-output-to-file *plant-project*
     (lambda ()
-      (write *project-data* (current-output-port)))))
+      (pretty-print *project-data* (current-output-port)))))
 
 (define (load-project-settings)
   (with-input-from-file *plant-project*
@@ -69,9 +71,11 @@
 (define (install-quicklisp options)
   (let ((wget-cmd (string-join (list "wget" *quicklisp-url*)))
         (quicklisp-install-cmd (string-join
-                                (list (plant-lisp)
+                                (list (plant-lisp) (no-user-init)
                                       (load-arg "quicklisp.lisp")
-                                      (eval-arg "'(quicklisp-quickstart:install :path #P\".plant/quicklisp/\")'")
+                                      (eval-arg
+                                       (format #f "'(quicklisp-quickstart:install :path #P\"~a/quicklisp/\")'"
+                                               *plant-dir*))
                                       (eval-arg "'(quit)'")))))
     (format #t wget-cmd)
     (system wget-cmd)
@@ -85,8 +89,8 @@
                           (list "'(ql:quickload '\"'\"'(:swank :alexandria "
                                 quickloads
                                 "))'"))))
-    (unless (dir? ".plant")
-      (mkdir ".plant"))
+    (unless (dir? *plant-dir*)
+      (mkdir *plant-dir*))
     (system (string-join
              (list (plant-lisp) (no-user-init)
                    (load-arg ".plant/quicklisp/setup.lisp")
@@ -109,7 +113,13 @@
 
 (define (quickloads options)
   (if (>= (length options) 1)
-      (build-lisp options)
+      (begin
+        (build-lisp options)
+        (set! *project-data*
+              (assoc-set! *project-data* #:quickloads
+                          (append (assoc-ref *project-data* #:quickloads)
+                                  options)))
+        (save-project-settings))
       (help options)))
 
 (define (run options)
@@ -173,7 +183,7 @@
           (set! *project-data* (assoc-set! *project-data* #:quickloads *default-quickloads*))
           (set! *project-data* (assoc-set! *project-data* #:save
                                            (format #f (assoc-ref *project-data* #:save)
-                                                   plant-lisp-bin project-name))))
+                                                   (project-lisp)))))
         (save-project-settings))
       ;; else load the existing project data and bind it
       (load-project-settings))
