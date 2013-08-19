@@ -1,1 +1,5 @@
 quicklisp/*
+ecl/*
+cache/*
+*.o
+plant-bin
