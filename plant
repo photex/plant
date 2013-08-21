@@ -10,7 +10,6 @@
 
 ;; globals
 
-(define *default-quickloads* (list "swank" "alexandria"))
 (define *plant-project* (curpath "plant-project.scm"))
 (define *plant-dir* (curpath ".plant"))
 (define *project-data* '())
@@ -56,6 +55,9 @@
 (define (save)
   (eval-arg (project-item #:save)))
 
+(define (project-quickloads)
+  (project-item #:quickloads))
+
 ;; functions
 
 (define (save-project-settings)
@@ -80,10 +82,10 @@
     (delete-file "quicklisp.lisp")))
 
 (define (build-lisp options)
-  (let* ((quickloads (string-join (map (lambda (x) (format #f ":~a" x))
-                                       (append *default-quickloads* options))))
+  (let* ((quickloads-fmt (string-join (map (lambda (x) (format #f ":~a" x))
+                                       (append (project-quickloads) options))))
          (quickloads-arg (string-join
-                          (list "'(ql:quickload '\"'\"'(" quickloads "))'"))))
+                          (list "'(ql:quickload '\"'\"'(" quickloads-fmt "))'"))))
     (unless (dir? *plant-dir*)
       (mkdir *plant-dir*))
     (system (string-join
@@ -174,7 +176,7 @@
                                  (lambda () (read (current-input-port)))))
           (set! *project-data* (assoc-set! *project-data* #:project-name project-name))
           (set! *project-data* (assoc-set! *project-data* #:plant-lisp plant-lisp-bin))
-          (set! *project-data* (assoc-set! *project-data* #:quickloads *default-quickloads*))
+          (set! *project-data* (assoc-set! *project-data* #:quickloads '("swank" "alexandria")))
           (set! *project-data* (assoc-set! *project-data* #:save
                                            (format #f (assoc-ref *project-data* #:save)
                                                    (project-lisp)))))
