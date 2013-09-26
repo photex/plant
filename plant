@@ -12,6 +12,8 @@
 
 (define *plant-project* (curpath "plant-project.scm"))
 (define *plant-dir* (curpath ".plant"))
+(define *lisp-settings* (with-input-from-file (format #f "~a/.plant/lisp-settings.scm")
+                          (lambda () (read (current-input-port)))))
 (define *project-data* '())
 
 (define *quicklisp-url* "http://beta.quicklisp.org/quicklisp.lisp")
