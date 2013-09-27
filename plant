@@ -14,9 +14,12 @@
 ;; globals
 
 (define *plant-lisp* (or (getenv "PLANT_LISP") "sbcl"))
+(format #t "PLANT_LISP = ~a~%" *plant-lisp*)
 
 ;;; Plant home is where we'll be looking for 
-(define *plant-home* (join-path (getenv "HOME") ".plant"))
+(define *plant-home* (or (getenv "PLANT_HOME") (join-path (getenv "HOME") ".plant")))
+(format #t "PLANT_HOME = ~a~%" *plant-home*)
+
 ;;; This is the file that holds the specific command line arguments for the
 ;;; supported lisp implementations.
 (define *lisp-settings* '())
@@ -55,13 +58,13 @@
              (format #f "~a-~a" *plant-lisp* (project-name))))
 
 (define (no-user-init)
-  (project-item #:no-user-init))
+  (assoc-ref *lisp-settings* #:no-user-init))
 
 (define (load-arg arg)
-  (string-join (list (project-item #:load) arg)))
+  (string-join (list (assoc-ref *lisp-settings* #:load) arg)))
 
 (define (eval-arg arg)
-  (string-join (list (project-item #:eval) arg)))
+  (string-join (list (assoc-ref *lisp-settings* #:eval) arg)))
 
 (define (save)
   (format #f (assoc-ref *lisp-settings* #:save)
@@ -85,7 +88,7 @@
 (define (install-quicklisp)
   (let ((wget-cmd (string-join (list "wget" *quicklisp-url*)))
         (quicklisp-install-cmd (string-join
-                                (list (plant-lisp) (no-user-init)
+                                (list *plant-lisp* (no-user-init)
                                       (load-arg "quicklisp.lisp")
                                       (eval-arg "'(quicklisp-quickstart:install :path #P\"~/.plant/quicklisp/\")'")
                                       (eval-arg "'(quit)'")))))
@@ -97,26 +100,29 @@
   (let* ((quickloads-fmt (string-join (map (lambda (x) (format #f ":~a" x))
                                        (append (project-quickloads) options))))
          (quickloads-arg (string-join
-                          (list "'(ql:quickload '\"'\"'(" quickloads-fmt "))'"))))
+                          (list "'(ql:quickload (list" quickloads-fmt "))'")
+                          )))
     (unless (dir? *plant-project-dir*)
       (mkdir *plant-project-dir*))
+    
     (system (string-join
-             (list (plant-lisp) (no-user-init)
+             (list *plant-lisp* (no-user-init)
                    (load-arg "~/.plant/quicklisp/setup.lisp")
                    (load-arg "~/.plant/setup.lisp")
                    (eval-arg quickloads-arg)
-                   (save))))))
+                   (eval-arg (save)))))))
 
 ;; commands
 
 (define (help options)
-  (format #t "plant init~%")
+  (format #t "plant setup~%")
   (format #t "plant include <git|hg|wget> <url>~%")
   (format #t "plant quickloads <system> [<system> <system> ...]~%")
   (format #t "plant run [--swank [port]]~%")
   (format #t "plant rebuild~%"))
 
-(define (init options)
+(define (setup options)
+  ;; TODO perhaps check and see if the lisp wasn't already saved?
   (build-lisp options))
 
 (define (quickloads options)
@@ -145,20 +151,21 @@
                                       (if swank?
                                           swank-args
                                           "")))))
-    (if (file? (curpath (project-lisp)))
+    (if (file? (project-lisp))
         (system cmd-line)
         (begin
           (format #t "ERROR: The current directory does not appear to be a plant project.~%~a~%~a~%"
-                  (project-lisp) (cmd-line))
-          (exit 2)))))
+                  (project-lisp) cmd-line)
+          (exit 2)))
+    ))
 
 (define (include options) #f)
 
 ;; entry point
 
 (define (main args)
-  "There isn't much here. We just take the command and the options and run."
-
+  (format #t "~%")
+  
   ;; we need at least a command
   (when (< (length args) 2)
     (help '())
@@ -174,14 +181,20 @@
          (desired-lisp #f))
     (map (lambda (alias)
            (when (member *plant-lisp* (car alias))
-             (set! desired-lisp (cdr alias))))
+             (set! desired-lisp (cadr alias))))
          aliases)
     (if (not desired-lisp)
       (begin
         (help '())
-        (format #t "ERROR: ~a is not currently supported by plant.~%" *plant-lisp*)
+        (format #t "~%ERROR: ~a is not currently supported by plant.~%" *plant-lisp*)
         (exit 2))
-      (set! *lisp-settings* (assoc-ref (assoc-ref settings-data desired-lisp) #:settings))))
+      (begin
+        (format #t "Using settings for ~a~%" desired-lisp)
+        (set! *lisp-settings* (assoc-ref (assoc-ref settings-data desired-lisp) #:settings)))))
+
+  (unless *lisp-settings*
+    (format #t "~%ERROR: Unable to load settings for the current lisp.~%")
+    (exit 3))
 
   ;; are we setting up a new project or loading a previously created one
   (if (not (file? *plant-project*))
@@ -204,7 +217,7 @@
     (install-quicklisp))
 
   (unless (defined? '*project-data*)
-    (format #t "ERROR: Unable to load or create project data!")
+    (format #t "~%ERROR: Unable to load or create project data!~%")
     (exit 3))
   
   (let* ((command (cadr args))
@@ -212,8 +225,9 @@
     ;; dispatch further work to the individual command handlers
     (cond ((equal? command "run") (run options))
           ((equal? command "quickloads") (quickloads options))
-          ((equal? command "update") (rebuild options))
-          ((equal? command "include") (include options))
-          ((equal? command "init") (init options))
+          ;; ((equal? command "include") (include options))
+          ((equal? command "setup") (setup options))
           ((equal? command "help") (help options))
-          (#t (help options)))))
+          (#t (begin
+                (help options)
+                (format #t "~%ERROR: Unknown command ~a~%" command))))))
