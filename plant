@@ -3,6 +3,7 @@
 !#
 
 (use-modules (ice-9 pretty-print))
+(use-modules (ice-9 regex))
 
 (define (join-path . args)
   (string-join args "/"))
@@ -31,6 +32,8 @@
 (define *project-data* '())
 
 (define *quicklisp-url* "http://beta.quicklisp.org/quicklisp.lisp")
+
+(define *supported-dvcs* '("git" "hg"))
 
 ;; utilities
 
@@ -112,6 +115,21 @@
                    (eval-arg quickloads-arg)
                    (eval-arg (save)))))))
 
+(define (fetch-dependency dep-config)
+  (let* ((method (assoc-ref dep-config #:method))
+         (url (assoc-ref dep-config #:url))
+         (clone? (if (member method *supported-dvcs*) "clone" ""))
+         (dep-name (let* ((url-basename (basename url))
+                          (match (string-match "\\.git" url-basename)))
+                     (if match
+                         (regexp-substitute #f match 'pre "" 'post)
+                         url-basename)))
+         (destination (join-path *deps-dir* dep-name))
+         (cmd-line (string-join (list method clone? url destination))))
+    (when (not (dir? destination))
+      (format #t "Fetching: ~a~%" url)
+      (system cmd-line))))
+
 ;; commands
 
 (define (help options)
@@ -122,6 +140,7 @@
   (format #t "plant rebuild~%"))
 
 (define (setup options)
+  (map fetch-dependency (assoc-ref *project-data* #:dependencies))
   ;; TODO perhaps check and see if the lisp wasn't already saved?
   (build-lisp options))
 
@@ -156,8 +175,7 @@
         (begin
           (format #t "ERROR: The current directory does not appear to be a plant project.~%~a~%~a~%"
                   (project-lisp) cmd-line)
-          (exit 2)))
-    ))
+          (exit 2)))))
 
 (define (include options) #f)
 
