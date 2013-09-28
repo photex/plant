@@ -106,7 +106,8 @@
                           (list "'(ql:quickload (list" quickloads-fmt "))'")
                           )))
     (unless (dir? *plant-project-dir*)
-      (mkdir *plant-project-dir*))
+      (mkdir *plant-project-dir*)
+      (mkdir (join-path *plant-project-dir* "deps")))
     
     (system (string-join
              (list *plant-lisp* (no-user-init)
