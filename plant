@@ -155,6 +155,7 @@
 (define (quickloads options)
   (if (>= (length options) 1)
       (begin
+        ;; TODO If something goes wrong then incorrect settings are saved
         (build-lisp options)
         (set! *project-data*
               (assoc-set! *project-data* #:quickloads
@@ -173,15 +174,15 @@
                    default-port))
          (swank-arg-template "'(swank:create-server :dont-close t :port ~a)'")
          (swank-args (eval-arg (format #f swank-arg-template port)))
-         (has-rlwrap? (begin
-                        (format #t "Checking for rlwrap... ")
-                        (equal? 0 (system "which rlwrap"))))
+         (has-rlwrap? (begin (format #t "Checking for rlwrap... ")
+                             (equal? 0 (system "which rlwrap"))))
          (cmd-line (string-join (list (if has-rlwrap? "rlwrap" "")
                                       (project-lisp)
                                       (no-user-init)
                                       (if swank? swank-args "")))))
     (unless (file? (project-lisp))
       (setup '()))
+    (format #t (if has-rlwrap? "~%" "rlwrap not found in PATH~%~%"))
     (system cmd-line)))
 
 (define (include options)
@@ -203,8 +204,6 @@
 ;; entry point
 
 (define (main args)
-  (format #t "~%")
-  
   ;; we need at least a command
   (when (< (length args) 2)
     (help '())
@@ -263,6 +262,7 @@
           ((equal? command "quickloads") (quickloads options))
           ((equal? command "include") (include options))
           ((equal? command "setup") (setup options))
+          ((equal? command "update") (setup options))
           ((equal? command "help") (help options))
           (#t (begin
                 (help options)
