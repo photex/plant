@@ -259,6 +259,7 @@
          (options (cddr args)))
     ;; dispatch further work to the individual command handlers
     (cond ((equal? command "run") (run options))
+          ((equal? command "swank") (run (append '("--swank") options)))
           ((equal? command "quickloads") (quickloads options))
           ((equal? command "include") (include options))
           ((equal? command "setup") (setup options))
