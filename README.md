@@ -5,14 +5,29 @@ Plant is a sketch of how I'd like to interact with Common Lisp projects. The mot
 to actually write it came from [Lisp In Summer Projects](http://lispinsummerprojects.org/).
 
 Happily, once my initial use-case was met it was useful enough to encourage further
-development. It's a pretty good start to a tool that could become helpful to others.
+development. It's a pretty good start for a tool that could become helpful to others.
 
 At the moment, Plant is little more than a simple script that follows a couple of
 conventions I've become accustomed to. It makes it very very easy for me to work on
 a project on multiple machines and with different lisps. Currently it only knows how
-to work with Clozure and SBCL. This has been particularly useful when working on
-[cl-sdl2](http://github.com/lispgames/cl-sdl2). It's also pretty *nix specific
-at the moment.
+to work with Clozure and SBCL but I'm keen to add support for other Common Lisp implementations.
+This has been particularly useful when working on [cl-sdl2](http://github.com/lispgames/cl-sdl2).
+It's also pretty *nix specific at the moment.
+
+Examples
+--------
+
+You can find an example project [here](http://github.com/photex/plant-example).
+
+**TL;DR** The most basic interaction with plant could be:
+- `mkdir new-project`
+- `cd new-project`
+- `plant swank`
+
+This will create a new plant project with some standard quickloads already loaded into the lisp,
+load the REPL, and then run swank on the default port of 4005. From now on, anytime you enter
+this project directory and run `plant run` or `plant swank`, the lisp will have already been setup
+and you'll be able to quickly get to the fun stuff.
 
 What do you mean "plant"?
 -------------------------
@@ -40,7 +55,11 @@ Yeah. Specifically [Guile](http://www.gnu.org/software/guile).
 In order for this to actually count as an entry for *Lisp In Summer Projects* it
 had to be written in lisp. As someone who is relatively new to lisp in general, this
 gave me a chance to stretch out and experience a highly regarded scheme implementation
-that is widely available or easy to build or install on modern systems. 
+that is widely available or easy to build or install on modern systems.
+
+It is my goal to re-write Plant totally as a Common Lisp tool. Not because of any shortcomings
+with Scheme but simply because it's a tool for Common Lisp development that should really be
+leveraging the work put into Quicklisp and ASDF3.
 
 Inspiration
 ------------
@@ -107,7 +126,3 @@ You can control which lisp is used by setting the environment variable **$PLANT_
 At the moment your options are really only `sbcl`, `ccl`, or `ccl64`. I would very
 much like to improve this in the future.
 
-Examples
---------
-
-You can find an example project [here](http://github.com/photex/plant-example)
