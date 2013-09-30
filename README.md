@@ -57,3 +57,57 @@ brilliantly.
 
 I believe that it's not out of our reach to have a similar tool for Common Lisp projects.
 
+
+How do I Plant?
+================
+
+Getting started with plant shouldn't be too difficult but it's not automated.
+
+Guile 2
+-------
+
+For starters, plant requires Guile 2.x. and either [SBCL](http://sbcl.org) or
+[Clozure](http://ccl.clozure.com):
+- OSX: `brew install guile --devel && brew install sbcl ccl rlwrap`
+- Ubuntu: `sudo apt-get install guile2 sbcl rlwrap`
+- ???: If your package manager doesn't have Guile 2.x then build it from source.
+
+Grab plant
+-----------
+
+Here is how I make plant available in my shell:
+- `cd $HOME`
+- `git clone git://github.com/photex/plant.git .plant`
+- `cd ~/bin`
+- `ln -s ~/.plant/plant`
+
+Plant can be placed anywhere. The primary plant script just needs to be in your path,
+and the environment variable **$PLANT_HOME** must be set if plant isn't installed to
+`~/.plant/`.
+
+You can periodically check for updates using git:
+- `git fetch`
+- `git merge origin/master`
+
+Start using plant
+-----------------
+
+You should now be good to go. The easiest way to mess around with plant is to make
+a folder and start trying out the basic workflow:
+- `cd ~/Projects`
+- `mkdir test-project`
+- `cd test-project`
+- `plant build`
+- `plant run`
+
+You should now be ready to hack! When *rlwrap* is found on **$PATH** it'll be used
+automatically to make the interaction with the repl a bit easier.
+
+You can control which lisp is used by setting the environment variable **$PLANT_LISP**.
+At the moment your options are really only `sbcl`, `ccl`, or `ccl64`. I would very
+much like to improve this in the future.
+
+Examples
+--------
+
+You can find an example project [here](http://github.com/photex/plant-example)
