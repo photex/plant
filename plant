@@ -99,9 +99,9 @@
     (system quicklisp-install-cmd)
     (delete-file "quicklisp.lisp")))
 
-(define (build-lisp options)
+(define (build-lisp)
   (let* ((quickloads-fmt (string-join (map (lambda (x) (format #f ":~a" x))
-                                       (append (project-quickloads) options))))
+                                           (project-quickloads))))
          (quickloads-arg (string-join
                           (list "'(ql:quickload (list" quickloads-fmt "))'"))))
     ;; Create the .plant directory if it doesn't exist
@@ -139,6 +139,13 @@
   (let ((dependencies (assoc-ref *project-data* #:dependencies)))
     (map fetch-dependency dependencies)))
 
+(define (save-quickloads quickloads)
+  (set! *project-data*
+        (assoc-set! *project-data* #:quickloads
+                    (append (assoc-ref *project-data* #:quickloads)
+                            quickloads)))
+  (save-project-settings))
+
 ;; commands
 
 (define (help options)
@@ -148,21 +155,18 @@
   (format #t "plant run [--swank [port]]~%")
   (format #t "plant rebuild~%"))
 
-(define (setup options)
-  (fetch-dependencies)
-  (build-lisp options))
-
 (define (quickloads options)
   (if (>= (length options) 1)
       (begin
         ;; TODO If something goes wrong then incorrect settings are saved
-        (build-lisp options)
-        (set! *project-data*
-              (assoc-set! *project-data* #:quickloads
-                          (append (assoc-ref *project-data* #:quickloads)
-                                  options)))
-        (save-project-settings))
+        (save-quickloads options)
+        (build-lisp))
       (help options)))
+
+(define (setup options)
+  (save-quickloads options)
+  (fetch-dependencies)
+  (build-lisp))
 
 (define (run options)
   (let* ((option-count (length options))
