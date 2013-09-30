@@ -149,11 +149,12 @@
 ;; commands
 
 (define (help options)
-  (format #t "plant setup~%")
+  (format #t "plant build [<system> <system> <system> ...]~%")
+  (format #t "    - 'setup', 'update' are aliases for build.~%")
   (format #t "plant include <git|hg> <url>~%")
   (format #t "plant quickloads <system> [<system> <system> ...]~%")
   (format #t "plant run [--swank [port]]~%")
-  (format #t "plant rebuild~%"))
+  (format #t "    - You can also run `plant swank` as a shortcut.~%")
 
 (define (quickloads options)
   (if (>= (length options) 1)
@@ -197,11 +198,9 @@
       (exit 5))
     (let ((dep-config (acons #:method method (acons #:url url '())))
           (dependencies (assoc-ref *project-data* #:dependencies)))
-      (pretty-print (cons dep-config dependencies))
       (set! *project-data*
             (assoc-set! *project-data* #:dependencies
                         (cons dep-config dependencies)))
-      (pretty-print *project-data*)
       (save-project-settings)
       (fetch-dependencies))))
 
@@ -268,6 +267,7 @@
           ((equal? command "include") (include options))
           ((equal? command "setup") (setup options))
           ((equal? command "update") (setup options))
+          ((equal? command "build") (setup options))
           ((equal? command "help") (help options))
           (#t (begin
                 (help options)
