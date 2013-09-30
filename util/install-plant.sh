@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PLANT_ROOT=${HOME}/.plant
+PLANT_ROOT=${HOME}/.plant-ecl
 PLANT_CACHE_ROOT=${PLANT_ROOT}/cache
 PLANT_ECL_ROOT=${PLANT_ROOT}/ecl
 PLANT_QUICKLISP_ROOT=${PLANT_ROOT}/quicklisp
@@ -33,7 +33,7 @@ install_quicklisp() {
     wget http://beta.quicklisp.org/quicklisp.lisp
     
     ${PLANT_ECL_ROOT}/bin/ecl -norc -load quicklisp.lisp \
-        -eval '(quicklisp-quickstart:install :path #P"~/.plant/quicklisp/")' \
+        -eval '(quicklisp-quickstart:install :path #P"'$PLANT_QUICKLISP_ROOT'/")' \
         -eval '(quit)'
 
     rm quicklisp.lisp

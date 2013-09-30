@@ -1,8 +1,3 @@
-(require :getopt)
-(require :cl-json)
-
-(use-package '(:cl-json))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar *default-quickloads* '("swank" "alexandria"))
