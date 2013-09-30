@@ -69,7 +69,7 @@ Prerequisites
 Plant requires Guile 2.x. and either [SBCL](http://sbcl.org) or [Clozure](http://ccl.clozure.com):
 - OSX: `brew install guile --devel && brew install sbcl ccl rlwrap`
 - Ubuntu: `sudo apt-get install guile2 sbcl rlwrap`
-- ???: If your package manager doesn't have Guile 2.x then build it from source and
+- ???: If your package manager doesn't have Guile 2.x then you should build it from source.
 Clozure, and SBCL are available for a wide variety of platforms from their websites.
 
 Grab plant
