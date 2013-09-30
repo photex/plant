@@ -28,7 +28,7 @@ you think of a cool recursive ancronym then I'll totally adopt that instead.
 Why is Plant?
 =============
 
-The foundations for Plant are [Quicklisp](quicklisp.org) and [ASDF](http://common-lisp.net/project/asdf/).
+The foundations for Plant are [Quicklisp](http://quicklisp.org) and [ASDF](http://common-lisp.net/project/asdf/).
 I am aware of [clbuild](http://common-lisp.net/project/clbuild/) and Plant is more or
 less a sort of clbuild clone written in Scheme instead of bash.
 
