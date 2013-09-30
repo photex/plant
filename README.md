@@ -85,7 +85,8 @@ Getting started with plant shouldn't be too difficult but it's not automated.
 Prerequisites
 --------------
 
-Plant requires Guile 2.x. and either [SBCL](http://sbcl.org) or [Clozure](http://ccl.clozure.com):
+Plant requires [Guile](http://www.gnu.org/software/guile) 2.x. and either
+[SBCL](http://sbcl.org) or [Clozure](http://ccl.clozure.com):
 - OSX: `brew install guile --devel && brew install sbcl ccl rlwrap`
 - Ubuntu: `sudo apt-get install guile2 sbcl rlwrap`
 - ???: If your package manager doesn't have Guile 2.x then you should build it from source.
