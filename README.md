@@ -2,15 +2,17 @@ What is Plant?
 ==============
 
 Plant is a sketch of how I'd like to interact with Common Lisp projects. The motivation
-to actually write it cam from [Lisp In Summer Projects](http://lispinsummerprojects.org/)
-and once I had something that more or less met my initial use case I quickly realized
-that I something that my life a bit more pleasant.
+to actually write it came from [Lisp In Summer Projects](http://lispinsummerprojects.org/).
+
+Happily, once my initial use-case was met it was useful enough to encourage further
+development. It's a pretty good start to a tool that could become helpful to others.
 
 At the moment, Plant is little more than a simple script that follows a couple of
 conventions I've become accustomed to. It makes it very very easy for me to work on
-a project on multiple machines with different lisps. This has been particularly useful
-when working on [cl-sdl2](http://github.com/lispgames/cl-sdl2). It's also pretty *nix
-specific at the moment.
+a project on multiple machines and with different lisps. Currently it only knows how
+to work with Clozure and SBCL. This has been particularly useful when working on
+[cl-sdl2](http://github.com/lispgames/cl-sdl2). It's also pretty *nix specific
+at the moment.
 
 What do you mean "plant"?
 -------------------------
