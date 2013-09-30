@@ -1,0 +1,11 @@
+((#:sbcl . ((#:settings . ((#:no-user-init . "--no-userinit")
+                           (#:load . "--load")
+                           (#:eval . "--eval")
+                           (#:save . "'(save-lisp-and-die #P\"~a\" :executable t :purify t)'")))
+            (#:aliases . ("sbcl"))))
+
+ (#:clozure . ((#:settings . ((#:no-user-init . "-n")
+                              (#:load . "-l")
+                              (#:eval . "-e")
+                              (#:save . "'(save-application #P\"~a\" :prepend-kernel t :purify t)'")))
+               (#:aliases . ("ccl" "ccl64")))))
