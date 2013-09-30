@@ -154,7 +154,7 @@
   (format #t "plant include <git|hg> <url>~%")
   (format #t "plant quickloads <system> [<system> <system> ...]~%")
   (format #t "plant run [--swank [port]]~%")
-  (format #t "    - You can also run `plant swank` as a shortcut.~%")
+  (format #t "    - You can also run `plant swank` as a shortcut.~%"))
 
 (define (quickloads options)
   (if (>= (length options) 1)
@@ -198,9 +198,11 @@
       (exit 5))
     (let ((dep-config (acons #:method method (acons #:url url '())))
           (dependencies (assoc-ref *project-data* #:dependencies)))
+      
       (set! *project-data*
             (assoc-set! *project-data* #:dependencies
                         (cons dep-config dependencies)))
+      
       (save-project-settings)
       (fetch-dependencies))))
 
