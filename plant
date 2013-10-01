@@ -1,0 +1,24 @@
+#!/bin/sh
+
+error_message()
+{
+  TITLE=$1
+  if [ -t 1 ]; then
+    echo "ERROR: $TITLE\n$2"
+  elif [ -n `which zenity` ]; then
+    zenity --error --title="$TITLE" --text="$2"
+  elif [ -n `which kdialog` ]; then
+    kdialog --error --title "$TITLE" "$2"
+  elif [ -n `which xmessage` ]; then
+    xmessage -center "ERROR: $TITLE: $2"
+  elif [ -n `which notify-send` ]; then
+    notify-send "ERROR: $TITLE: $2"
+  else
+    echo "ERROR: $TITLE\n$2"
+  fi
+}
+
+if [ -z "$PLANT_LISP" ]; then
+    PLANT_LISP=sbcl
+fi
+

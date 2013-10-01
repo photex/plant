@@ -1,3 +1,5 @@
+(ql:quickload '(:getopt))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar *default-quickloads* '("swank" "alexandria"))
