@@ -1,4 +1,4 @@
-((#:quickloads . ("swank" "alexandria" "osicat" "cl-fad"))
+((#:quickloads . ("swank" "alexandria" "cl-fad"))
  (#:project-name . "unknown")
  (#:project-version . "0.0.1")
  (#:dependencies . ()))
