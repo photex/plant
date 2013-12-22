@@ -33,11 +33,12 @@ if [ ! -x ${PLANT_BIN} ]; then
     if [ -x `which clisp` ]; then
         echo "Building plant with clisp"
         clisp -q \
-            ${PLANT_HOME}/build_plant.lisp \
-            ${PLANT_BIN}
+            -x '(load "${PLANT_HOME}/asdf.lisp") (load "${PLANT_HOME}/build_plant.lisp")' \
+            -- ${PLANT_BIN}
     elif [ -x `which sbcl` ]; then
         echo "Building plant with sbcl"
         sbcl --noinform \
+            --load ${PLANT_HOME}/asdf.lisp \
             --script ${PLANT_HOME}/build_plant.lisp \
             ${PLANT_BIN}
     fi
