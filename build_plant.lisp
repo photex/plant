@@ -24,9 +24,9 @@
 
 ;; TODO This is the legacy method of telling asdf
 ;; where to find systems. 
-(pushnew (merge-pathnames "third_party/base/" plant:*home*)
+(pushnew (merge-pathnames "lib/base/" plant:*home*)
          asdf:*central-registry*)
-(pushnew (merge-pathnames "third_party/lisp-gflags/" plant:*home*)
+(pushnew (merge-pathnames "lib/lisp-gflags/" plant:*home*)
          asdf:*central-registry*)
 
 (asdf:load-system "com.google.flag")

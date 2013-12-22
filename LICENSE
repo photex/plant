@@ -22,7 +22,7 @@ SOFTWARE.
 
 -------------------------------------------------------------------------------
 
-Components of this repository kept under 'third_party' have their own licenses.
+Components of this repository kept under 'lib' have their own licenses.
 Please refer to them before using or distributing this repository. 
 
-'third_party/base' and 'third_party/lisp-gflags' are Copyright Google Inc.
+'lib/base' and 'lib/lisp-gflags' are Copyright Google Inc.
