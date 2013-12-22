@@ -31,6 +31,27 @@
 
 (asdf:load-system "com.google.flag")
 
+;; Do we need to download quicklisp?
+(unless (uiop:directory-exists-p (merge-pathnames "quicklisp/" plant:*home*))
+  (format t "Downloading quicklisp~%")
+  (let ((quickstart (format nil "(quicklisp-quickstart:install :path #P\"~aquicklisp/\")"
+                            plant:*home*)))
+    (unwind-protect
+         (progn 
+           (uiop:run-program '("wget" "http://beta.quicklisp.org/quicklisp.lisp"))
+           (uiop:run-program
+            #+clisp
+            (format nil "clisp -x '(load #P\"quicklisp.lisp\") ~a'" quickstart)
+            #+sbcl
+            (list "sbcl"
+                  "--load" "quicklisp.lisp"
+                  "--eval" quickstart
+                  "--eval" "(quit)")
+            :ignore-error-status nil)
+      (uiop:delete-file-if-exists "quicklisp.lisp")))))
+
+(load (merge-pathnames "quicklisp/setup.lisp" plant:*home*))
+
 ;; By this point we should have everything we need to
 ;; save the binary.
 (let ((plant-bin (merge-pathnames "bin/plant" plant:*home*)))
