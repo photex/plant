@@ -1,8 +1,3 @@
-;; Can't use swank if it gets loaded before
-;; you save an image in clisp. Have to load it
-;; each run instead.
-#+clisp(asdf:load-system "swank" :verbose nil)
-
 (in-package :plant)
 
 ;;;*plant-home* should be defined when plant is built
@@ -23,5 +18,4 @@
   (format t "PLANT_HOME=~a~%PLANT_LISP=~a~%" *home* *lisp*)
   (when *rlwrap-p*
       (format t "rlwrap is available.~%"))
-  ;(quit)
-  )
+  0)

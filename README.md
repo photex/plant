@@ -1,3 +1,8 @@
+OUTDATED INFORMATION IN THIS BRANCH
+===================================
+
+This document is yet to be updated for the cl-dev branch.
+
 What is Plant?
 ==============
 
