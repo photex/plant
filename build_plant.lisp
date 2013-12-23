@@ -18,9 +18,7 @@
   "Our top level function loads plant.lisp runs plant:main, then exits."
   (let ((plant (merge-pathnames "plant.lisp" plant:*home*)))
     (load plant)
-    ;; TODO error handling, proper return codes, etc
-    (plant:main)
-    (quit)))
+    (plant:main)))
 
 ;; TODO This is the legacy method of telling asdf
 ;; where to find systems. 

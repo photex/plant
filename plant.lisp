@@ -1,5 +1,21 @@
 (in-package :plant)
 
+(use-package '(#:com.google.base
+               #:com.google.flag))
+
+(define-flag *help*
+    :default-value nil
+    :selector "help"
+    :type boolean
+    :documentation "Display usage information.")
+
+(define-flag *dev*
+    :default-value nil
+    :selector "dev"
+    :type boolean
+    :help "When hacking on plant itself you can use this to swank it up."
+    :documentation "Rather than execute plant, run a swank server.")
+
 ;;;*plant-home* should be defined when plant is built
 ;;; but *plant-lisp* should be configurable by the environment.
 (defvar *lisp*
@@ -18,4 +34,13 @@
   (format t "PLANT_HOME=~a~%PLANT_LISP=~a~%" *home* *lisp*)
   (when *rlwrap-p*
       (format t "rlwrap is available.~%"))
-  0)
+  (parse-command-line *args*)
+  (if *dev*
+      (progn
+        ;; clisp should just hit the toplevel repl from here
+        ;; without any push from us.
+        ;; sbcl will exit unless we call the toplevel
+        ;; clozure ???
+        #+sbcl (sb-impl::toplevel-init))
+      (progn
+        #+clisp (cl-user:quit))))
