@@ -7,7 +7,7 @@
     :default-value nil
     :selector "help"
     :type boolean
-    :documentation "Display usage information.")
+    :documentation "Display the available commands, or the specific help for a command.")
 
 (define-flag *dev*
     :default-value nil
@@ -15,6 +15,11 @@
     :type boolean
     :help "When hacking on plant itself you can use this to swank it up."
     :documentation "Rather than execute plant, run a swank server.")
+
+(define-flag *port*
+    :default-value 4005
+    :selector "port"
+    :type (integer 1024 65535))
 
 ;;;*plant-home* should be defined when plant is built
 ;;; but *plant-lisp* should be configurable by the environment.
@@ -34,13 +39,14 @@
   (format t "PLANT_HOME=~a~%PLANT_LISP=~a~%" *home* *lisp*)
   (when *rlwrap-p*
       (format t "rlwrap is available.~%"))
-  (parse-command-line *args*)
-  (if *dev*
-      (progn
-        ;; clisp should just hit the toplevel repl from here
-        ;; without any push from us.
-        ;; sbcl will exit unless we call the toplevel
-        ;; clozure ???
-        #+sbcl (sb-impl::toplevel-init))
-      (progn
-        #+clisp (cl-user:quit))))
+  (let ((commands (parse-command-line *args*)))
+    (if *dev*
+        (progn
+          ;; clisp should just hit the toplevel repl from here
+          ;; without any push from us.
+          ;; sbcl will exit unless we call the toplevel
+          ;; clozure ???
+          #+sbcl (sb-impl::toplevel-init))
+        (progn
+          (format t "~a~%" commands)
+          #+clisp (cl-user:quit)))))
