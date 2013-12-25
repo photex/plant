@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# TODO what are some alternative ways of handling this?
 if [ -z "$PLANT_LISP" ]; then
     if [ -x `which sbcl` ]; then
         export PLANT_LISP=sbcl
@@ -38,6 +39,15 @@ if [ ! -x ${PLANT_BIN} ]; then
         sbcl --noinform \
             --load ${PLANT_HOME}/asdf.lisp \
             --script ${PLANT_HOME}/build_plant.lisp
+    elif [ -x `which ccl` ]; then
+        echo "Building plant with Clozure"
+        ccl -q -l ${PLANT_HOME}/asdf.lisp \
+            -l ${PLANT_HOME}/build_plant.lisp
+    else
+        echo "Unable to find any supported lisp system to run plant."
+        echo "Make sure that clisp, sbcl, or ccl are in your path."
+        echo "Also consider submitting a github issue with a suggestion on how to improve this for your needs."
+        exit 1
     fi
     
     if [ ! -x ${PLANT_BIN} ]; then
@@ -50,6 +60,6 @@ fi
 if [ -x `which ${PLANT_LISP}` ]; then
     ${PLANT_BIN} -- $@
 else
-    echo "I wasn't able to find a supported lisp. Please create a github issue to request support for your preferred environment. :)"
+    echo "I wasn't able to find ${PLANT_LISP}. Please create a github issue to request support for your preferred environment. :)"
     exit 1
 fi

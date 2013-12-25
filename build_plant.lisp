@@ -61,4 +61,7 @@
   #+clisp
   (saveinitmem plant-bin :executable t :quiet t
                :init-function #'boot)
+  #+clozure
+  (save-application plant-bin :toplevel-function #'boot
+                    :prepend-kernel t)
   (quit))
