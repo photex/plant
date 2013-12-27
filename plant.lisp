@@ -22,37 +22,57 @@
                (format s "The command \"~a\" is not registered."
                        command)))))
 
-(defun dispatch-command (name options)
+(defun get-command (name)
   (let ((cmd-fn (gethash (string-upcase name) *commands*)))
     (unless cmd-fn
       (error 'command-not-found :command name))
-    (apply cmd-fn (list options))))
+    cmd-fn))
+
+(defun dispatch-command (name options)
+  (apply (get-command name) (list options)))
+
+(defun display-help (name cmd-fn)
+  (format t "~t~a: ~a~%" name (documentation cmd-fn 'function)))
 
 (defcmd help
-    "Displays each command and it's help string."
-  ;; TODO take an option to print the help for a specific command
-  (loop :for k :being :the :hash-keys :in *commands*
-     do (let ((cmd-fn (gethash k *commands*)))
-          (format t "~a~%" (documentation cmd-fn 'function)))))
+    "Displays each command and it's help string, or print the help for a specific command only."
+  (format t "~%Plant~%Usage: plant <flags> <command> <options>~%")
 
-(define-flag *help*
-    :default-value nil
-    :selector "help"
-    :type boolean
-    :documentation "Display the available commands, or the specific help for a command.")
+  ;; Flag summary
+  (format t "~%Available flags:~%")
+  (loop :for (flag-name . flag) :in com.google.flag::*registered-flags*
+     :do (let ((flag-help (com.google.flag::help flag)))
+           (format t "~t--~a: ~a~%" flag-name flag-help)))
+  
+  ;; Command summary
+  (if options
+      ;; help for a specific command
+      (let* ((cmd-name (string-upcase (first options)))
+             (cmd-fn (get-command cmd-name)))
+        (format t "~%")
+        (display-help cmd-name cmd-fn))
+
+      ;; display all help messages
+      (progn
+        (format t "~%Available commands: ~%")
+        (loop :for cmd-name :being :the :hash-keys :in *commands*
+           do (let ((cmd-fn (gethash cmd-name *commands*)))
+                (display-help cmd-name cmd-fn)))))
+  
+  (format t "~%"))
 
 (define-flag *dev*
     :default-value nil
     :selector "dev"
     :type boolean
-    :help "When hacking on plant itself you can use this to swank it up."
+    :help "When hacking on plant itself you can use this to invoke the toplevel REPL in the plant binary."
     :documentation "Run the toplevel repl instead of running plant.")
 
 (define-flag *port*
     :default-value 4005
     :selector "port"
     :type (integer 1024 65535)
-    :help "Select the port to run swank on. Default is 4005."
+    :help "Used by the 'run' command, this sets the port to run swank on. Default is 4005."
     :documentation "Select the swank port. Default is 4005.")
 
 ;; *home* should be defined when plant is built
@@ -105,10 +125,6 @@
 ;;; main entry point for the plant application
 
 (defun main ()
-  (format t "PLANT_HOME=~a~%PLANT_LISP=~a~%" *home* *lisp*)
-  (when *rlwrap-p*
-      (format t "rlwrap is available.~%"))
-  
   ;; Do we need to download quicklisp?
   (unless (uiop:directory-exists-p (merge-pathnames "quicklisp/" plant:*home*))
     (format t "Downloading quicklisp~%")
@@ -119,6 +135,7 @@
   (let ((args (parse-command-line *command-line*)))
     (if *dev*
         (progn
+          (ql:quickload "swank")
           ;; clisp should just hit the toplevel repl from here
           ;; without any push from us.
           ;; sbcl and clozure will exit unless we call the toplevel.
