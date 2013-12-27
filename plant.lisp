@@ -5,14 +5,21 @@
 
 (defparameter *commands* (make-hash-table :test 'equal))
 
-
-;; TODO improve the options setup
 (defmacro defcmd (name help &body body)
   (let ((key (string name)))
     `(progn
        (defun ,name (options)
          ,help
          ,@body)
+       (setf (gethash ,key *commands*) #',name))))
+
+(defmacro defalias (name cmd-fn)
+  (let ((key (string name))
+        (cmd-help (format nil "Alias for ~a"(string cmd-fn))))
+    `(progn
+       (defun ,name (options)
+         ,cmd-help
+         (,cmd-fn options))
        (setf (gethash ,key *commands*) #',name))))
 
 (define-condition command-not-found (error)
@@ -61,12 +68,13 @@
   
   (format t "~%"))
 
-(define-flag *dev*
-    :default-value nil
-    :selector "dev"
-    :type boolean
-    :help "When hacking on plant itself you can use this to invoke the toplevel REPL in the plant binary."
-    :documentation "Run the toplevel repl instead of running plant.")
+;; clear out any previously registered flags
+;; since loading the file multiple times would otherwise
+;; create duplicate entries.
+;; TODO when attempting that in the REPL I got an error
+;; so I need to figure out why this exhibits different
+;; behavior when just loading the file.
+(setf com.google.flag::*registered-flags* ())
 
 (define-flag *port*
     :default-value 4005
@@ -85,23 +93,16 @@
     :help "Specify the lisp to use. Defaults to the value of the PLANT_LISP env var.")
 
 (define-flag *settings*
-    :default-value (merge-pathnames "runtime/settings.lisp" *home*)
+    ;; TODO create a pathname parser so that we can use pathnames
+    ;; instead of strings here.
+    ;:default-value (merge-pathnames "runtime/settings.lisp" *home*)
+    :default-value (format nil "~aruntime/settings.lisp" *home*)
     :selector "settings"
     :type string
     :help "For lisps that aren't yet officially supported, you can provide your own settings in order to use it.")
 
 (defvar *rlwrap-p*
   (= 0 (asdf:run-shell-command "which rlwrap")))
-
-;; Clisp and Clozure properly handle the '--' flag to
-;; indicate that the remainder of the command line is to
-;; be passed to the program. Under SBCL we need to remove
-;; the '--' ourselves.
-(defvar *command-line*
-  #+sbcl
-  (cdr (uiop:command-line-arguments))
-  #+(or clisp clozure)
-  (uiop:command-line-arguments))
 
 (defun install-quicklisp ()
   "Download quicklisp and creates a plant internal quicklisp install."
@@ -124,25 +125,17 @@
 
 ;;; main entry point for the plant application
 
-(defun main ()
+(defun main (args)
   ;; Do we need to download quicklisp?
   (unless (uiop:directory-exists-p (merge-pathnames "quicklisp/" plant:*home*))
     (format t "Downloading quicklisp~%")
     (install-quicklisp))
-  
-  (load (merge-pathnames "quicklisp/setup.lisp" *home*))
-  
-  (let ((args (parse-command-line *command-line*)))
-    (if *dev*
+  (let ((command (first args))
+        (options (rest args)))
+    (format t "COMMAND: ~a, OPTIONS: ~a~%" command options)
+    (handler-case
+        (dispatch-command command options)
+      (command-not-found ()
         (progn
-          (ql:quickload "swank")
-          ;; clisp should just hit the toplevel repl from here
-          ;; without any push from us.
-          ;; sbcl and clozure will exit unless we call the toplevel.
-          #+sbcl (sb-impl::toplevel-init)
-          #+clozure (ccl:toplevel-loop))
-        (progn
-          (let ((command (first args))
-                (options (rest args)))
-            (dispatch-command command options))
-          #+clisp (cl-user:quit)))))
+          (dispatch-command "help" ())
+          (format t "ERROR: \"~a\" is not an available command.~%" command))))))

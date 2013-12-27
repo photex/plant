@@ -24,31 +24,35 @@ PLANT_BIN=${PLANT_HOME}/bin/plant
 
 if [ ! -x ${PLANT_BIN} ]; then
     echo "Looks like this is the first time you're running plant."
-    echo "I'm going to try and build it with either clisp, sbcl, or ccl."
-    echo "If you don't have any of these then plant can't run."
-    echo
-    echo "Press any key to continue, or Ctrl-c to abort."
-    read _
+    echo "I can build it with either clisp, sbcl, or ccl."
+    echo 
+    echo "Please tell me which lisp to build plant with, or use Ctrl-c to abort."
+    echo -n "[clisp, sbcl, or ccl] : "
+    read LISP
 
-    if [ -x `which clisp` ]; then
-        echo "Building plant with clisp"
-        clisp -q \
-            -x "(load \"${PLANT_HOME}/lib/asdf.lisp\") (load \"${PLANT_HOME}/build_plant.lisp\")"
-    elif [ -x `which sbcl` ]; then
-        echo "Building plant with sbcl"
-        sbcl --noinform \
-            --load ${PLANT_HOME}/asdf.lisp \
-            --script ${PLANT_HOME}/build_plant.lisp
-    elif [ -x `which ccl` ]; then
-        echo "Building plant with Clozure"
-        ccl -q -l ${PLANT_HOME}/asdf.lisp \
-            -l ${PLANT_HOME}/build_plant.lisp
-    else
-        echo "Unable to find any supported lisp system to run plant."
-        echo "Make sure that clisp, sbcl, or ccl are in your path."
-        echo "Also consider submitting a github issue with a suggestion on how to improve this for your needs."
-        exit 1
-    fi
+    case "$LISP" in 
+        "clisp")
+            echo "Building plant with clisp"
+            clisp -q \
+                -x "(load \"${PLANT_HOME}/lib/asdf.lisp\") (load \"${PLANT_HOME}/build_plant.lisp\")"
+            ;;
+        "sbcl")
+            echo "Building plant with sbcl"
+            sbcl --noinform \
+                --load ${PLANT_HOME}/lib/asdf.lisp \
+                --script ${PLANT_HOME}/build_plant.lisp
+            ;;
+        "ccl")
+            echo "Building plant with Clozure"
+            ccl --quiet -l ${PLANT_HOME}/lib/asdf.lisp \
+                -l ${PLANT_HOME}/build_plant.lisp
+            ;;
+        *)
+            echo "$LISP is not a supported lisp system to run plant."
+            echo "Also consider submitting a github issue with a suggestion on how to improve plant for your needs."
+            exit 1
+            ;;
+    esac
     
     if [ ! -x ${PLANT_BIN} ]; then
         echo "Unable to build plant. :("
