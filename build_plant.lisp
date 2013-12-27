@@ -1,6 +1,15 @@
 ;;; This file builds the top level plant binary.
 ;;; It defines the core plant package and various parameters
 ;;; that will be used by the plant runtime to perform its work.
+;;;
+;;; TODO This is all heavily geared towards *developing* plant
+;;; rather than running it. Our top level function doesn't do
+;;; anything other than load plant each time it's run... that's
+;;; a no go for the majority of use-cases.
+;;; For the time being I'm going to leave this as it is, but what
+;;; should really happen is that plant gets loaded and saved with
+;;; the binary, and *only* reloaded when using the --dev flag.
+;;; This also means that we will parse the command line in two stages.
 
 (defpackage #:plant
   (:use #:cl)
@@ -28,27 +37,6 @@
          asdf:*central-registry*)
 
 (asdf:load-system "com.google.flag")
-
-;; Do we need to download quicklisp?
-(unless (uiop:directory-exists-p (merge-pathnames "quicklisp/" plant:*home*))
-  (format t "Downloading quicklisp~%")
-  (let ((quickstart (format nil "(quicklisp-quickstart:install :path #P\"~aquicklisp/\")"
-                            plant:*home*)))
-    (unwind-protect
-         (progn 
-           (uiop:run-program '("wget" "http://beta.quicklisp.org/quicklisp.lisp"))
-           (uiop:run-program
-            #+clisp
-            (format nil "clisp -x '(load #P\"quicklisp.lisp\") ~a'" quickstart)
-            #+sbcl
-            (list "sbcl"
-                  "--load" "quicklisp.lisp"
-                  "--eval" quickstart
-                  "--eval" "(quit)")
-            :ignore-error-status nil)
-      (uiop:delete-file-if-exists "quicklisp.lisp")))))
-
-(load (merge-pathnames "quicklisp/setup.lisp" plant:*home*))
 
 ;; By this point we should have everything we need to
 ;; save the binary.
