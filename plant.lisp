@@ -3,6 +3,38 @@
 (use-package '(#:com.google.base
                #:com.google.flag))
 
+(defparameter *commands* (make-hash-table :test 'equal))
+
+
+;; TODO improve the options setup
+(defmacro defcmd (name help &body body)
+  (let ((key (string name)))
+    `(progn
+       (defun ,name (options)
+         ,help
+         ,@body)
+       (setf (gethash ,key *commands*) #',name))))
+
+(define-condition command-not-found (error)
+  ((command :initarg :command))
+  (:report (lambda (c s)
+             (with-slots (command) c
+               (format s "The command \"~a\" is not registered."
+                       command)))))
+
+(defun dispatch-command (name options)
+  (let ((cmd-fn (gethash (string-upcase name) *commands*)))
+    (unless cmd-fn
+      (error 'command-not-found :command name))
+    (apply cmd-fn (list options))))
+
+(defcmd help
+    "Displays each command and it's help string."
+  ;; TODO take an option to print the help for a specific command
+  (loop :for k :being :the :hash-keys :in *commands*
+     do (let ((cmd-fn (gethash k *commands*)))
+          (format t "~a~%" (documentation cmd-fn 'function)))))
+
 (define-flag *help*
     :default-value nil
     :selector "help"
@@ -25,7 +57,7 @@
 
 ;; *home* should be defined when plant is built
 ;; but *lisp* should be configurable by the environment
-;; or the command line option.
+;; or this command line option.
 (define-flag *lisp*
     :default-value (uiop/os:getenv "PLANT_LISP")
     :selector "lisp"
@@ -45,25 +77,55 @@
 ;; indicate that the remainder of the command line is to
 ;; be passed to the program. Under SBCL we need to remove
 ;; the '--' ourselves.
-(defvar *args*
+(defvar *command-line*
   #+sbcl
   (cdr (uiop:command-line-arguments))
   #+(or clisp clozure)
   (uiop:command-line-arguments))
 
+(defun install-quicklisp ()
+  "Download quicklisp and creates a plant internal quicklisp install."
+  (let ((quickstart (format nil "(quicklisp-quickstart:install :path #P\"~aquicklisp/\")"
+                            plant:*home*)))
+    (unwind-protect
+         (progn 
+           (uiop:run-program '("wget" "http://beta.quicklisp.org/quicklisp.lisp"))
+           (uiop:run-program
+            #+clisp
+            (format nil "clisp -x '(load #P\"quicklisp.lisp\") ~a'" quickstart)
+            #-clisp
+            (list #+sbcl "sbcl"
+                  #+clozure "ccl"
+                  "--load" "quicklisp.lisp"
+                  "--eval" quickstart
+                  "--eval" "(quit)")
+            :ignore-error-status nil)
+           (uiop:delete-file-if-exists "quicklisp.lisp")))))
+
+;;; main entry point for the plant application
+
 (defun main ()
   (format t "PLANT_HOME=~a~%PLANT_LISP=~a~%" *home* *lisp*)
   (when *rlwrap-p*
       (format t "rlwrap is available.~%"))
-  (let ((commands (parse-command-line *args*)))
+  
+  ;; Do we need to download quicklisp?
+  (unless (uiop:directory-exists-p (merge-pathnames "quicklisp/" plant:*home*))
+    (format t "Downloading quicklisp~%")
+    (install-quicklisp))
+  
+  (load (merge-pathnames "quicklisp/setup.lisp" *home*))
+  
+  (let ((args (parse-command-line *command-line*)))
     (if *dev*
         (progn
           ;; clisp should just hit the toplevel repl from here
           ;; without any push from us.
-          ;; sbcl will exit unless we call the toplevel
-          ;; clozure ???
+          ;; sbcl and clozure will exit unless we call the toplevel.
           #+sbcl (sb-impl::toplevel-init)
           #+clozure (ccl:toplevel-loop))
         (progn
-          (format t "~a~%" commands)
+          (let ((command (first args))
+                (options (rest args)))
+            (dispatch-command command options))
           #+clisp (cl-user:quit)))))
