@@ -1,50 +1,74 @@
-#!/bin/sh
-
-# TODO what are some alternative ways of handling this?
-if [ -z "$PLANT_LISP" ]; then
-    if [ -x `which sbcl` ]; then
-        export PLANT_LISP=sbcl
-    elif [ -x `which ccl` ]; then
-        export PLANT_LISP=ccl
-    elif [ -x `which clisp` ]; then
-        export PLANT_LISP=clisp
-    else
-        echo "Unable to automatically find a suitable lisp for plant."
-        echo "Please set the PLANT_LISP env var with the path to your lisp executable."
-        exit 1
-    fi
-fi
+#!/bin/bash
 
 if [ -z "$PLANT_HOME" ]; then
     plant_path=`readlink -f $0`
     export PLANT_HOME=`dirname $plant_path`
 fi
 
+QUICKLISP_HOME=${PLANT_HOME}/quicklisp
 PLANT_BIN=${PLANT_HOME}/bin/plant
+
+# downloads and installs quicklisp if it's not already done
+function install_quicklisp {
+    if [ ! -d $QUICKLISP_HOME ]; then
+        WD=`pwd`
+        cd $PLANT_HOME
+        if [ ! -f quicklisp.lisp ]; then
+            wget http://beta.quicklisp.org/quicklisp.lisp
+        fi
+        case "$1" in
+            "clisp")
+                clisp -x \
+                    "'(load \"quicklisp.lisp\") (quicklisp-quickstart:install :path \"$QUICKLISP_HOME/\")'"
+                ;;
+            "sbcl" | "ccl")
+                # thankfully these fine programs support the same commands
+                $1 --load "install_quicklisp.lisp" --eval '(quit)'
+                ;;
+        esac       
+        rm quicklisp.lisp
+        cd $WD
+    fi
+
+    # and now we check again to determine if an error occurred
+    if [ ! -d $QUICKLISP_HOME ]; then
+        echo "Unable to install quicklisp!"
+        exit 1
+    fi
+}
 
 if [ ! -x ${PLANT_BIN} ]; then
     echo "Looks like this is the first time you're running plant."
     echo "I can build it with either clisp, sbcl, or ccl."
+    echo "This will also become the default lisp used by plant for your projects."
     echo 
     echo "Please tell me which lisp to build plant with, or use Ctrl-c to abort."
     echo -n "[clisp, sbcl, or ccl] : "
     read LISP
 
+    # TODO it's really lame to call "install_quicklisp" like I am.
+
     case "$LISP" in 
         "clisp")
+            install_quicklisp ${LISP}
             echo "Building plant with clisp"
             clisp -q \
-                -x "(load \"${PLANT_HOME}/lib/asdf.lisp\") (load \"${PLANT_HOME}/build_plant.lisp\")"
+                -x "(load \"${PLANT_HOME}/quicklisp/setup.lisp\") (load \"${PLANT_HOME}/lib/asdf.lisp\") (load \"${PLANT_HOME}/build_plant.lisp\")"
             ;;
         "sbcl")
+            install_quicklisp ${LISP}
             echo "Building plant with sbcl"
             sbcl --noinform \
+                --load ${PLANT_HOME}/quicklisp/setup.lisp \
                 --load ${PLANT_HOME}/lib/asdf.lisp \
                 --script ${PLANT_HOME}/build_plant.lisp
             ;;
         "ccl")
+            install_quicklisp ${LISP}
             echo "Building plant with Clozure"
-            ccl --quiet -l ${PLANT_HOME}/lib/asdf.lisp \
+            ccl --quiet \
+                -l ${PLANT_HOME}/quicklisp/setup.lisp \
+                -l ${PLANT_HOME}/lib/asdf.lisp \
                 -l ${PLANT_HOME}/build_plant.lisp
             ;;
         *)
@@ -61,9 +85,4 @@ if [ ! -x ${PLANT_BIN} ]; then
     fi
 fi
 
-if [ -x `which ${PLANT_LISP}` ]; then
-    ${PLANT_BIN} -- $@
-else
-    echo "I wasn't able to find ${PLANT_LISP}. Please create a github issue to request support for your preferred environment. :)"
-    exit 1
-fi
+${PLANT_BIN} -- $@

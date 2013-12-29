@@ -1,15 +1,6 @@
 ;;; This file builds the top level plant binary.
 ;;; It defines the core plant package and various parameters
 ;;; that will be used by the plant runtime to perform its work.
-;;;
-;;; TODO This is all heavily geared towards *developing* plant
-;;; rather than running it. Our top level function doesn't do
-;;; anything other than load plant each time it's run... that's
-;;; a no go for the majority of use-cases.
-;;; For the time being I'm going to leave this as it is, but what
-;;; should really happen is that plant gets loaded and saved with
-;;; the binary, and *only* reloaded when using the --dev flag.
-;;; This also means that we will parse the command line in two stages.
 
 (defpackage #:plant
   (:use #:cl)
@@ -17,7 +8,8 @@
            #:main
            #:defcmd
            #:defalias
-           #:defhook))
+           #:defhook
+           #:defproject))
 
 (in-package :plant)
 
@@ -25,6 +17,8 @@
                 (uiop/os:getenv "PLANT_HOME")))
 
 (in-package :cl-user)
+
+(use-package :plant)
 
 ;; TODO This is the legacy method of telling asdf
 ;; where to find systems. 
@@ -34,10 +28,9 @@
          asdf:*central-registry*)
 (pushnew (merge-pathnames "lib/slime/" plant:*home*)
          asdf:*central-registry*)
-(pushnew (merge-pathnames "commands/" plant:*home*)
-         asdf:*central-registry*)
 
 (asdf:load-system "com.google.flag")
+;; clisp and swank are having troubles. You'll have to manually load it.
 #-clisp (asdf:load-system "swank")
 
 ;; application entry point
@@ -52,7 +45,6 @@
       :documentation "Run the toplevel repl instead of running plant.")
   
   (defun boot ()
-    "Our top level function runs plant:main, then exits."
     (unwind-protect
          ;; Clisp and Clozure properly handle the '--' flag to
          ;; indicate that the remainder of the command line is to

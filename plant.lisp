@@ -3,7 +3,9 @@
 (use-package '(#:com.google.base
                #:com.google.flag))
 
+(defparameter *project* ())
 (defparameter *commands* (make-hash-table :test 'equal))
+(defvar *project-directory* (uiop/os:getcwd))
 
 (defmacro defcmd (name help &body body)
   (let ((key (string name)))
@@ -21,6 +23,9 @@
          ,cmd-help
          (,cmd-fn options))
        (setf (gethash ,key *commands*) #',name))))
+
+(defmacro defhook ()
+  (error "defhook not implemented"))
 
 (define-condition command-not-found (error)
   ((command :initarg :command))
@@ -87,7 +92,10 @@
 ;; but *lisp* should be configurable by the environment
 ;; or this command line option.
 (define-flag *lisp*
-    :default-value (uiop/os:getenv "PLANT_LISP")
+    :default-value (or (uiop/os:getenv "PLANT_LISP")
+                       #+clisp "clisp"
+                       #+sbcl "sbcl"
+                       #+clozure "ccl")
     :selector "lisp"
     :type string
     :help "Specify the lisp to use. Defaults to the value of the PLANT_LISP env var.")
@@ -104,35 +112,33 @@
 (defvar *rlwrap-p*
   (= 0 (asdf:run-shell-command "which rlwrap")))
 
-(defun install-quicklisp ()
-  "Download quicklisp and creates a plant internal quicklisp install."
-  (let ((quickstart (format nil "(quicklisp-quickstart:install :path #P\"~aquicklisp/\")"
-                            plant:*home*)))
-    (unwind-protect
-         (progn 
-           (uiop:run-program '("wget" "http://beta.quicklisp.org/quicklisp.lisp"))
-           (uiop:run-program
-            #+clisp
-            (format nil "clisp -x '(load #P\"quicklisp.lisp\") ~a'" quickstart)
-            #-clisp
-            (list #+sbcl "sbcl"
-                  #+clozure "ccl"
-                  "--load" "quicklisp.lisp"
-                  "--eval" quickstart
-                  "--eval" "(quit)")
-            :ignore-error-status nil)
-           (uiop:delete-file-if-exists "quicklisp.lisp")))))
+(defun load-files-from (dir)
+  (let ((files (uiop/filesystem:directory-files dir)))
+    (loop :for file :in files
+       :if (string= "lisp" (pathname-type file))
+       :do (load file))))
+
+(defun current-project ()
+  (unless *project*
+    (let* ((cwd (uiop/os:getcwd))
+           (project-data (merge-pathnames "project.lisp" cwd)))
+      (when (uiop/filesystem:file-exists-p project-data)
+        (with-open-file (f project-data)
+          (setf *project* (read f))))))
+  *project*)
 
 ;;; main entry point for the plant application
 
 (defun main (args)
-  ;; Do we need to download quicklisp?
-  (unless (uiop:directory-exists-p (merge-pathnames "quicklisp/" plant:*home*))
-    (format t "Downloading quicklisp~%")
-    (install-quicklisp))
+  ;; load local command definitions
+  (load-files-from (merge-pathnames "commands/" *home*))
+
+  ;; load user command definitions
+  (load-files-from (merge-pathnames ".config/plant/commands/" (user-homedir-pathname)))
+
+  ;; dispatch to the requested command
   (let ((command (first args))
         (options (rest args)))
-    (format t "COMMAND: ~a, OPTIONS: ~a~%" command options)
     (handler-case
         (dispatch-command command options)
       (command-not-found ()

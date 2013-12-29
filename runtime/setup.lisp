@@ -1,4 +1,4 @@
-(ql:quickload :cffi)
+(ql:quickload "cffi")
 
 ;;; setup.lisp is used to bootstrap some simple things in our saved lisp image.
 
