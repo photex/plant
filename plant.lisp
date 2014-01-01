@@ -3,29 +3,46 @@
 (use-package '(#:com.google.base
                #:com.google.flag))
 
-(defparameter *project* ())
 (defparameter *commands* (make-hash-table :test 'equal))
-(defvar *project-directory* (uiop/os:getcwd))
+(defparameter *pre-hooks* (make-hash-table :test 'equal))
+(defparameter *post-hooks* (make-hash-table :test 'equal))
+
+(defvar *project* nil)
+(defvar *project-directory* nil)
+(defvar *options* nil)
 
 (defmacro defcmd (name help &body body)
   (let ((key (string name)))
     `(progn
-       (defun ,name (options)
+       (defun ,name ()
          ,help
          ,@body)
-       (setf (gethash ,key *commands*) #',name))))
+       (setf (gethash ,key *commands*) #',name)
+       (setf (gethash ,key *pre-hooks*) (make-hash-table :test 'equal))
+       (setf (gethash ,key *post-hooks*) (make-hash-table :test 'equal)))))
 
-(defmacro defalias (name cmd-fn)
-  (let ((key (string name))
-        (cmd-help (format nil "Alias for ~a"(string cmd-fn))))
+(defmacro defalias (name command)
+  (let* ((key (string name))
+         (cmd-name (string command))
+         (cmd-help (format nil "Alias for ~a" (string cmd-name))))
     `(progn
-       (defun ,name (options)
+       (defun ,name ()
          ,cmd-help
-         (,cmd-fn options))
+         (dispatch-command ,cmd-name))
        (setf (gethash ,key *commands*) #',name))))
 
-(defmacro defhook ()
-  (error "defhook not implemented"))
+(defmacro defhook (name step command &body body)
+  (let* ((key (string name))
+         (hook-hash (gethash (string command)
+                             (case step
+                               (pre *pre-hooks*)
+                               (post *post-hooks*)))))
+    (unless hook-hash
+      (error "When defining a hook, the value of step must be pre or post."))
+    `(progn
+       (defun ,name ()
+         ,@body)
+       (setf (gethash ,key ,hook-hash) #',name))))
 
 (define-condition command-not-found (error)
   ((command :initarg :command))
@@ -40,8 +57,21 @@
       (error 'command-not-found :command name))
     cmd-fn))
 
-(defun dispatch-command (name options)
-  (apply (get-command name) (list options)))
+(defun get-command-hooks (name)
+  (let ((key (string-upcase name)))
+    (values (gethash key *pre-hooks*)
+            (gethash key *post-hooks*))))
+
+(defun call-hooks (table)
+  (when table
+    (loop :for fn :being :the :hash-values :in table
+       :do (funcall fn))))
+
+(defun dispatch-command (name)
+  (multiple-value-bind (pre-hooks post-hooks) (get-command-hooks name)
+    (call-hooks pre-hooks)
+    (funcall (get-command name))
+    (call-hooks post-hooks)))
 
 (defun display-help (name cmd-fn)
   (format t "~t~a: ~a~%" name (documentation cmd-fn 'function)))
@@ -57,9 +87,9 @@
            (format t "~t--~a: ~a~%" flag-name flag-help)))
   
   ;; Command summary
-  (if options
+  (if *options*
       ;; help for a specific command
-      (let* ((cmd-name (string-upcase (first options)))
+      (let* ((cmd-name (string-upcase (first *options*)))
              (cmd-fn (get-command cmd-name)))
         (format t "~%")
         (display-help cmd-name cmd-fn))
@@ -138,10 +168,10 @@
 
   ;; dispatch to the requested command
   (let ((command (first args))
-        (options (rest args)))
+        (*options* (rest args)))
     (handler-case
-        (dispatch-command command options)
+        (dispatch-command command)
       (command-not-found ()
         (progn
-          (dispatch-command "help" ())
+          (dispatch-command "help")
           (format t "ERROR: \"~a\" is not an available command.~%" command))))))
