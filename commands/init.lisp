@@ -20,7 +20,5 @@
       (setf *project* project-data)
       (setf *project-directory* project-root))))
 
-(defhook foo pre init
-  (print "PRE INIT"))
 (defhook foo post init
   (print "POST INIT"))
