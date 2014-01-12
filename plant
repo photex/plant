@@ -21,7 +21,7 @@ function install_quicklisp {
                 clisp -x \
                     "'(load \"quicklisp.lisp\") (quicklisp-quickstart:install :path \"$QUICKLISP_HOME/\")'"
                 ;;
-            "sbcl" | "ccl")
+            "sbcl" | "ccl" | "ccl64")
                 # thankfully these fine programs support the same commands
                 $1 --load "install_quicklisp.lisp" --eval '(quit)'
                 ;;
@@ -48,14 +48,14 @@ if [ ! -x ${PLANT_BIN} ]; then
 
     # TODO it's really lame to call "install_quicklisp" like I am.
 
-    case "$LISP" in 
-        "clisp")
+    case $LISP in 
+        clisp)
             install_quicklisp ${LISP}
             echo "Building plant with clisp"
             clisp -q \
                 -x "(load \"${PLANT_HOME}/quicklisp/setup.lisp\") (load \"${PLANT_HOME}/lib/asdf.lisp\") (load \"${PLANT_HOME}/build_plant.lisp\")"
             ;;
-        "sbcl")
+        sbcl)
             install_quicklisp ${LISP}
             echo "Building plant with sbcl"
             sbcl --noinform \
@@ -63,10 +63,10 @@ if [ ! -x ${PLANT_BIN} ]; then
                 --load ${PLANT_HOME}/lib/asdf.lisp \
                 --script ${PLANT_HOME}/build_plant.lisp
             ;;
-        "ccl")
+        ccl*)
             install_quicklisp ${LISP}
             echo "Building plant with Clozure"
-            ccl --quiet \
+            $LISP --quiet \
                 -l ${PLANT_HOME}/quicklisp/setup.lisp \
                 -l ${PLANT_HOME}/lib/asdf.lisp \
                 -l ${PLANT_HOME}/build_plant.lisp
